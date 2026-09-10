@@ -470,7 +470,7 @@ function statbookColumns() {
     { group: "Median", label: "Record", key: "medianWinPct", format: (_, team) => team.medianRecord },
     { group: "Median", label: "Win %", key: "medianWinPct", format: percentage },
     { group: "Median", label: "Avg ±", key: "averageDeltaMedian", format: signed },
-    { group: "Median", label: "Great", key: "greatWeeks", format: integer },
+    { group: "Median", label: "Good", key: "greatWeeks", format: integer },
     { group: "Median", label: "Average", key: "averageWeeks", format: integer },
     { group: "Median", label: "Bad", key: "badWeeks", format: integer },
     { group: "Rank", label: "Average", key: "averageRank", format: rank },
@@ -532,7 +532,6 @@ function renderStatbookTable(stats) {
 function renderGlossary(stats) {
   const root = byId("glossaryGrid");
   root.replaceChildren();
-  const threshold = stats.metadata.greatWeekDelta;
   const items = [
     ["Weekly average", "The arithmetic mean of all finalized team scores for that week."],
     ["Weekly median", "The midpoint of all finalized team scores; with 10 teams, the middle two scores are averaged."],
@@ -543,9 +542,9 @@ function renderGlossary(stats) {
     [">120 / <110", "Counts use strict boundaries: scores must be greater than 120 or less than 110."],
     ["Range", "Best weekly score minus worst weekly score."],
     ["Score deviation", "Sample standard deviation of a team's weekly scores; shown after at least two finalized weeks."],
-    ["Great week", `More than ${threshold} points above that week's median.`],
-    ["Average week", `Between −${threshold} and +${threshold} points from the weekly median, inclusive.`],
-    ["Bad week", `More than ${threshold} points below that week's median.`],
+    ["Good week", "Score greater than the weekly league median plus one sample standard deviation of all team scores that week."],
+    ["Average week", "Score within one weekly league sample standard deviation of the median, including both boundaries. Identical scores are all Average."],
+    ["Bad week", "Score less than the weekly league median minus one sample standard deviation of all team scores that week."],
     ["Rank deviation", "Sample standard deviation of weekly points rank; lower means steadier placement."],
     ["Total mean / median", "Mean and median across every finalized team score in the regular season."],
     ["Median weekly median", "The median of the weekly league-median values."],

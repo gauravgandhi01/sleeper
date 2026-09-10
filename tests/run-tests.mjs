@@ -101,7 +101,7 @@ await test("competition ranks skip positions after ties", () => {
 });
 
 await test("2025 fixture reconciles the spreadsheet scoring model", () => {
-  const stats = calculateStats(snapshotFromScores(names2025, scores2025), { greatWeekDelta: 20 });
+  const stats = calculateStats(snapshotFromScores(names2025, scores2025));
   close(stats.league.overallMean, 116.95928571428571);
   close(stats.league.overallMedian, 116.12);
   close(stats.league.scoreDeviation, 22.015402118093988);
@@ -130,11 +130,26 @@ await test("2025 fixture reconciles the spreadsheet scoring model", () => {
   assert.deepEqual(stats.weeks[0].entries.map((entry) => entry.rank), [4, 3, 8, 7, 10, 1, 2, 9, 6, 5]);
 });
 
-await test("week quality uses strict ±20 median boundaries", () => {
+await test("week quality uses weekly sample SD with inclusive boundaries", () => {
   const boundary = calculateStats(snapshotFromScores(["High", "Mid", "Low"], [[120], [100], [80]]));
   boundary.teams.forEach((row) => assert.deepEqual([row.greatWeeks, row.averageWeeks, row.badWeeks], [0, 1, 0]));
-  const outside = calculateStats(snapshotFromScores(["High", "Mid", "Low"], [[120.01], [100], [79.99]]));
+  assert.equal(boundary.weeks[0].leagueScoreDeviation, 20);
+  const outside = calculateStats(snapshotFromScores(["High", "Mid A", "Mid B", "Low"], [[112], [100], [100], [88]]));
   assert.deepEqual([outside.teams.find((row) => row.teamName === "High").greatWeeks, outside.teams.find((row) => row.teamName === "Low").badWeeks], [1, 1]);
+});
+
+await test("week quality adapts to spread, is scale invariant, and handles identical scores", () => {
+  const wide = calculateStats(snapshotFromScores(["A", "B", "C", "D", "E", "F"], [[200], [130], [100], [100], [70], [0]]));
+  assert.equal(wide.teams.find((t) => t.teamName === "B").averageWeeks, 1);
+  assert.equal(wide.teams.find((t) => t.teamName === "E").averageWeeks, 1);
+  const rows = [[112, 200], [100, 100], [100, 100], [88, 0]];
+  const base = calculateStats(snapshotFromScores(["A", "B", "C", "D"], rows));
+  const scaled = calculateStats(snapshotFromScores(["A", "B", "C", "D"], rows.map((r) => r.map((v) => v * 2 + 50))));
+  assert.deepEqual(base.weeks.map((w) => w.entries.map((e) => e.quality)), scaled.weeks.map((w) => w.entries.map((e) => e.quality)));
+  for (const values of [[[0], [0]], [[100]], [[100], [100]]]) {
+    const equal = calculateStats(snapshotFromScores(values.map((_, i) => String(i)), values));
+    equal.teams.forEach((t) => assert.deepEqual([t.greatWeeks, t.averageWeeks, t.badWeeks], [0, 1, 0]));
+  }
 });
 
 await test("median ties are half-wins and zero scores remain valid", () => {

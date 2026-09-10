@@ -93,7 +93,7 @@ function nullableMax(values) {
   return values.length ? Math.max(...values) : null;
 }
 
-function decorateWeek(week, teamByRoster, greatWeekDelta, status) {
+function decorateWeek(week, teamByRoster, status) {
   if (!week) return null;
   const entries = week.entries
     .filter((entry) => teamByRoster.has(entry.rosterId) && Number.isFinite(entry.score))
@@ -101,6 +101,7 @@ function decorateWeek(week, teamByRoster, greatWeekDelta, status) {
   const scores = entries.map((entry) => entry.score);
   const leagueAverage = mean(scores);
   const leagueMedian = median(scores);
+  const leagueScoreDeviation = sampleStandardDeviation(scores);
   const ranks = competitionRanks(scores);
 
   return {
@@ -108,6 +109,7 @@ function decorateWeek(week, teamByRoster, greatWeekDelta, status) {
     status,
     leagueAverage,
     leagueMedian,
+    leagueScoreDeviation,
     entries: entries.map((entry, index) => {
       const deltaMedian = leagueMedian === null ? null : entry.score - leagueMedian;
       return {
@@ -115,7 +117,9 @@ function decorateWeek(week, teamByRoster, greatWeekDelta, status) {
         team: teamByRoster.get(entry.rosterId),
         deltaMedian,
         rank: ranks[index],
-        quality: deltaMedian === null ? null : qualityForDelta(deltaMedian, greatWeekDelta),
+        // Retain the internal "great" key for API compatibility; the UI calls it Good.
+        // Identical scores (including a singleton) are Average without dividing by SD.
+        quality: deltaMedian === null ? null : qualityForDelta(deltaMedian, leagueScoreDeviation ?? 0),
       };
     }),
   };
@@ -126,18 +130,14 @@ function decorateWeek(week, teamByRoster, greatWeekDelta, status) {
  * Only snapshot.completedWeeks contribute to aggregates.
  *
  * @param {SeasonSnapshot} snapshot
- * @param {{greatWeekDelta?: number}} [options]
  * @returns {DashboardStats}
  */
-export function calculateStats(snapshot, options = {}) {
-  const greatWeekDelta = Number.isFinite(options.greatWeekDelta)
-    ? options.greatWeekDelta
-    : 20;
+export function calculateStats(snapshot) {
   const teamByRoster = new Map(snapshot.teams.map((team) => [team.rosterId, team]));
   const weeks = [...snapshot.completedWeeks]
     .sort((a, b) => a.week - b.week)
-    .map((week) => decorateWeek(week, teamByRoster, greatWeekDelta, "final"));
-  const liveWeek = decorateWeek(snapshot.liveWeek, teamByRoster, greatWeekDelta, "live");
+    .map((week) => decorateWeek(week, teamByRoster, "final"));
+  const liveWeek = decorateWeek(snapshot.liveWeek, teamByRoster, "live");
 
   const teamStats = snapshot.teams.map((team) => {
     const weekly = weeks
@@ -195,7 +195,7 @@ export function calculateStats(snapshot, options = {}) {
   return {
     metadata: {
       ...snapshot.metadata,
-      greatWeekDelta,
+      weekQualityRule: "weekly-median-plus-minus-one-sample-sd",
       completedWeekCount: weeks.length,
     },
     teams: teamStats,

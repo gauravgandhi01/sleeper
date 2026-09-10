@@ -70,7 +70,11 @@ outage; no usable snapshot returns 503. Data is stale after a failed refresh or
 data availability, so Sleeper outages do not cause restart loops.
 
 Only finalized Weeks 1–14 enter statistics. All-zero schedules are preserved for
-matchup display, but never imply completion. Commissioner overrides, including
+matchup display, but never imply completion. Good/Bad weeks score strictly above/below
+the weekly league median ± one sample standard deviation of that week's team scores.
+Average includes both boundaries; identical scores are Average. The API retains the
+`greatWeeks` field name for compatibility, displayed as Good in the Stat book.
+Commissioner overrides, including
 zero, take precedence. Invalid/incomplete refreshes retain the previous snapshot.
 Live Scores stops at the end of the regular season. No player breakdowns or
 projections are fetched. Team names, managers, and scores are publicly visible.
