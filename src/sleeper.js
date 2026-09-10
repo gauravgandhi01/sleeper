@@ -107,6 +107,7 @@ function normalizeTeams(users, rosters, warnings) {
         rosterId,
         ownerIds,
         managerNames,
+        managerProfiles: ownerUsers.map((user) => ({ username: String(user.username || ""), displayName: String(user.display_name || "").trim() })),
         managerName,
         teamName: apiTeamName || String(primary?.display_name || "").trim() || `Roster ${rosterId}`,
         avatarUrl: avatarUrl(primary),
