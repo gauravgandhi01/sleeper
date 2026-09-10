@@ -400,7 +400,7 @@ h2 { max-width: 640px; font-size: clamp(1.45rem, 3vw, 2.35rem); }
 
 .empty-state { padding: clamp(42px, 8vw, 90px) 24px; text-align: center; }
 .empty-state .empty-mark { width: 64px; height: 64px; display: grid; place-items: center; margin: 0 auto 20px; border-radius: 20px; background: var(--accent); color: var(--on-accent); font-size: 1.3rem; font-weight: 900; }
-.empty-state h2 { font-size: clamp(1.7rem, 4vw, 2.8rem); }
+.empty-state h2 { margin-inline: auto; font-size: clamp(1.7rem, 4vw, 2.8rem); }
 .empty-state p { max-width: 560px; margin: 12px auto 0; color: var(--muted); }
 
 .error-panel { margin: 28px 0 60px; padding: clamp(30px, 7vw, 70px); text-align: center; }
