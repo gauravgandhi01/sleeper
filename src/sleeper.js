@@ -282,6 +282,7 @@ export async function fetchSleeperSeason({
 
   return {
     metadata: {
+      draftId: league.draft_id == null ? null : String(league.draft_id),
       leagueId: normalizedLeagueId,
       name: String(league.name || "Fantasy League"),
       season: String(league.season || state.season || ""),

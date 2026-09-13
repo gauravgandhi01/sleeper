@@ -62,6 +62,7 @@
     <nav class="section-tabs" role="tablist" aria-label="Dashboard sections">
       <button class="section-tab active" id="overviewTab" type="button" role="tab" aria-selected="true" aria-controls="overviewView" data-view="overviewView">Scoreboard</button>
       <button class="section-tab" id="liveTab" type="button" role="tab" aria-selected="false" aria-controls="liveView" data-view="liveView" tabindex="-1">Live Scores</button>
+      <button class="section-tab" id="draftTab" type="button" role="tab" aria-selected="false" aria-controls="draftView" data-view="draftView" tabindex="-1">Draft Board</button>
       <button class="section-tab" id="weeklyTab" type="button" role="tab" aria-selected="false" aria-controls="weeklyView" data-view="weeklyView">Trends</button>
       <button class="section-tab" id="statbookTab" type="button" role="tab" aria-selected="false" aria-controls="statbookView" data-view="statbookView">Stat book</button>
     </nav>
@@ -81,6 +82,13 @@
 
     <section id="liveView" class="dashboard-view" role="tabpanel" aria-labelledby="liveTab" hidden>
       <div id="liveWeekRegion"></div>
+    </section>
+    <section id="draftView" class="dashboard-view" role="tabpanel" aria-labelledby="draftTab" hidden>
+      <section class="panel section-panel" aria-labelledby="draftTitle">
+        <h2 id="draftTitle">Draft board</h2>
+        <p id="draftSummary" class="section-note"></p>
+        <div id="draftBoard" class="table-scroll" tabindex="0" role="region" aria-label="Draft picks by round and manager"></div>
+      </section>
     </section>
     <section id="weeklyView" class="dashboard-view" role="tabpanel" aria-labelledby="weeklyTab" hidden>
       <section class="panel section-panel" aria-labelledby="trendTitle">

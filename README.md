@@ -107,6 +107,17 @@ edit individual scores in snapshot JSON: checksums will reject edited snapshots.
 To recover from latest.json corruption alone, restart and let archive fallback
 recover automatically. Preserve the original files until recovery is verified.
 
+## Draft board
+
+The Draft Board tab shows rounds by draft slot, labeled with mapped manager
+names. Cells use player last names, overall pick numbers, positions, and NFL
+teams from Sleeper's draft/picks endpoints; full names are available on hover.
+The grid scrolls horizontally on narrow screens with sticky round labels.
+Completed drafts refresh at most daily through the shared server refresh;
+unfinished drafts can refresh every minute. Draft data is cached atomically in
+`DATA_DIR/LEAGUE_ID/draft.json` and restored on startup. Draft failures retain
+the saved board without interrupting league scores. No browser polling is added.
+
 References: [Render disks](https://render.com/docs/disks),
 [monorepo deployment](https://render.com/docs/monorepo-support),
 [Sleeper API](https://docs.sleeper.com/).

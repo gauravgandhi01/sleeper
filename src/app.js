@@ -16,7 +16,7 @@ async function requestDashboard(refresh = false) {
     if (payload.schemaVersion !== 1 || !payload.stats) throw new Error("Unexpected dashboard response.");
     renderDashboard(payload.stats, {
       isStale: payload.stale, cachedAt: payload.lastSuccessfulFetchAt,
-      warnings: payload.warnings, currentWeekMatchups: payload.currentWeekMatchups,
+      warnings: payload.warnings, currentWeekMatchups: payload.currentWeekMatchups, draftBoard: payload.draftBoard,
     });
     hasData = true;
   } catch (error) {

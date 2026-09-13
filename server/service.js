@@ -32,8 +32,8 @@ export function currentMatchups(snapshot, players = {}) {
 }
 
 export class DashboardService {
-  constructor({ store, leagueId, playerDirectory = null, fetchSeason = fetchSleeperSeason, now = Date.now, log = console }) {
-    Object.assign(this, { store, leagueId, playerDirectory, fetchSeason, now, log });
+  constructor({ store, leagueId, playerDirectory = null, draftBoard = null, fetchSeason = fetchSleeperSeason, now = Date.now, log = console }) {
+    Object.assign(this, { store, leagueId, playerDirectory, draftBoard, fetchSeason, now, log });
     this.saved = null;
     this.lastAttempt = -Infinity;
     this.failure = null;
@@ -52,7 +52,7 @@ export class DashboardService {
     try {
       const snapshot = await this.fetchSeason({ leagueId: this.leagueId, now: new Date(start), strict: true });
       this.saved = await this.store.save(snapshot, new Date(this.now()).toISOString());
-      await this.playerDirectory?.refresh();
+      await Promise.all([this.playerDirectory?.refresh(), this.draftBoard?.refresh(snapshot.metadata.draftId)]);
       this.failure = null;
       this.log.info("refresh_success", { durationMs: this.now() - start, lastSuccessfulFetchAt: this.saved.lastSuccessfulFetchAt });
     } catch (error) {
@@ -68,6 +68,6 @@ export class DashboardService {
     const warnings = [...snapshot.warnings];
     if (this.failure) warnings.push(this.failure);
     else if (stale) warnings.push("League data has not been updated in over 20 minutes.");
-    return { schemaVersion: 1, stats: calculateStats(snapshot), currentWeekMatchups: currentMatchups(snapshot, this.playerDirectory?.players), lastSuccessfulFetchAt, stale, warnings };
+    return { schemaVersion: 1, stats: calculateStats(snapshot), draftBoard: this.draftBoard?.dashboard(snapshot.metadata.draftId, snapshot.teams) || null, currentWeekMatchups: currentMatchups(snapshot, this.playerDirectory?.players), lastSuccessfulFetchAt, stale, warnings };
   }
 }

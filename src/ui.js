@@ -669,13 +669,55 @@ export function setRefreshState(isLoading) {
   button.replaceChildren(el("span", "", "↻"), document.createTextNode(isLoading ? " Checking Sleeper…" : " Refresh data"));
 }
 
+function renderDraftBoard(board) {
+  const root = byId("draftBoard");
+  root.replaceChildren();
+  byId("draftSummary").textContent = board ? `${board.season} · ${board.type} draft · ${board.rounds} rounds · ${board.picks.length} picks · ${board.status === "complete" ? "Complete" : "In progress / scheduled"}${board.stale ? " · Saved draft; latest update unavailable" : ""}` : "";
+  if (!board) {
+    root.append(emptyState("Draft unavailable", "Draft picks will appear here when available from Sleeper."));
+    return;
+  }
+  const table = el("table", "data-table draft-table");
+  const caption = el("caption", "visually-hidden", "Draft recap: rounds down the rows, managers in draft order across the columns.");
+  const head = el("thead");
+  const headers = el("tr");
+  for (const label of ["Round", ...board.columns.map((column) => column.managerName)]) {
+    const th = el("th", "", label);
+    th.scope = "col";
+    headers.append(th);
+  }
+  head.append(headers);
+  const body = el("tbody");
+  const picks = new Map(board.picks.map((pick) => [`${pick.round}/${pick.slot}`, pick]));
+  for (let round = 1; round <= board.rounds; round++) {
+    const row = el("tr");
+    const label = el("th", "", String(round));
+    label.scope = "row";
+    row.append(label);
+    for (const column of board.columns) {
+      const pick = picks.get(`${round}/${column.slot}`);
+      const cell = el("td");
+      if (pick) {
+        cell.title = `Pick ${pick.pickNo}: ${pick.fullName || pick.lastName}`;
+        cell.append(el("span", "draft-pick-number", `#${pick.pickNo}`), el("strong", "draft-player", pick.lastName), el("small", "draft-player-meta", [pick.position, pick.nflTeam].filter(Boolean).join(" · ")));
+      } else cell.append(el("span", "", "—"));
+      row.append(cell);
+    }
+    body.append(row);
+  }
+  table.append(caption, head, body);
+  root.append(table);
+}
+
 export function renderLoading() {
+  byId("draftBoard").replaceChildren(el("p", "section-note", "Loading draft…"));
   byId("liveWeekRegion").replaceChildren(el("p", "section-note", "Loading matchups…"));
   byId("matrixControls").replaceChildren();
   byId("matrixTable").replaceChildren(emptyState("Loading weekly scores", "Connecting to Sleeper.", "↻"));
 }
 
 export function renderError(error) {
+  renderDraftBoard(null);
   byId("liveWeekRegion").replaceChildren(emptyState("Matchups unavailable", "Use Refresh to try again."));
   byId("noticeRegion").replaceChildren();
   byId("statusTitle").textContent = "Sleeper unavailable";
@@ -697,6 +739,7 @@ export function renderDashboard(stats, context = {}) {
   renderMatrix(stats);
   renderWeekly(stats);
   renderLiveWeek(stats, context);
+  renderDraftBoard(context.draftBoard);
   renderStatbook(stats);
 }
 

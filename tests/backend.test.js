@@ -8,6 +8,47 @@ import { DashboardService, currentMatchups } from "../server/service.js";
 import { createApp } from "../server/app.js";
 import { fetchSleeperSeason } from "../src/sleeper.js";
 import { PlayerDirectory } from "../server/players.js";
+import { DraftBoard, normalizeDraft } from "../server/draft.js";
+
+test("draft grid follows actual snake slots and retains compound last names", () => {
+  const raw = { draft_id: "123", season: "2026", type: "snake", status: "complete", settings: { rounds: 2, teams: 2 }, slot_to_roster_id: { 1: 2, 2: 1 } };
+  const picks = [[1, 1], [1, 2], [2, 2], [2, 1]].map(([round, draft_slot], i) => ({ round, draft_slot, pick_no: i + 1, metadata: { first_name: "Amon-Ra", last_name: "St. Brown", position: "WR", team: "DET" } }));
+  const board = normalizeDraft(raw, picks);
+  assert.equal(board.columns[0].rosterId, 2);
+  assert.equal(board.picks[2].slot, 2);
+  assert.equal(board.picks[2].lastName, "St. Brown");
+  assert.throws(() => normalizeDraft(raw, picks.slice(1)), /Incomplete/);
+  assert.throws(() => normalizeDraft(raw, [picks[0], picks[0]]), /duplicate/);
+});
+
+test("draft cache survives restart and failures, with mapped manager headers", async (t) => {
+  const dir = await mkdtemp(join(tmpdir(), "sleeper-draft-"));
+  t.after(() => rm(dir, { recursive: true, force: true }));
+  let time = 100000;
+  let failed = false;
+  let calls = 0;
+  const raw = { draft_id: "123", status: "complete", settings: { rounds: 1, teams: 1 }, slot_to_roster_id: { 1: 4 } };
+  const picks = [{ round: 1, draft_slot: 1, pick_no: 1, metadata: { last_name: "Gibbs" } }];
+  const cache = new DraftBoard(dir, "456", { now: () => time, log, fetchImpl: async (url) => {
+    calls++;
+    if (failed) throw new Error("Offline");
+    return { ok: true, json: async () => url.endsWith("/picks") ? picks : raw };
+  } });
+  await cache.initialize();
+  await cache.refresh("123");
+  await cache.refresh("123");
+  assert.equal(calls, 2);
+  assert.equal(cache.dashboard("123", [{ rosterId: 4, managerName: "Alex" }]).columns[0].managerName, "Alex");
+  const restored = new DraftBoard(dir, "456", { log });
+  await restored.initialize();
+  assert.equal(restored.dashboard("123", []).picks[0].lastName, "Gibbs");
+  time += 86400001;
+  failed = true;
+  await cache.refresh("123");
+  assert.equal(cache.dashboard("123", []).stale, true);
+  assert.equal(cache.dashboard("123", []).picks.length, 1);
+  assert.equal(cache.dashboard("999", []), null);
+});
 
 const id = "1395542220504854528";
 const log = { info() {}, warn() {}, error() {} };

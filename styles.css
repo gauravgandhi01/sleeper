@@ -277,6 +277,11 @@ h2 { max-width: 640px; font-size: clamp(1.45rem, 3vw, 2.35rem); }
 .team-avatar img[hidden] { display: none; }
 
 .table-scroll { overflow-x: auto; overscroll-behavior-inline: contain; }
+.data-table.draft-table th, .data-table.draft-table td { min-width: 106px; text-align: left; border-right: 1px solid var(--line); padding: 10px; }
+.data-table.draft-table th:first-child { min-width: 54px; }
+.draft-table .draft-player { display: block; font-size: .85rem; }
+.draft-pick-number, .draft-player-meta { display: block; color: var(--muted); font-size: .68rem; font-weight: 400; }
+.draft-pick-number { margin-bottom: 4px; }
 .data-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: .88rem; }
 .data-table th, .data-table td { padding: 13px 14px; border-bottom: 1px solid var(--line); text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .data-table th:first-child, .data-table td:first-child { position: sticky; left: 0; z-index: 2; text-align: left; background: color-mix(in srgb, var(--panel) 95%, var(--bg)); }
