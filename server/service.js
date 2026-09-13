@@ -2,7 +2,7 @@ import { calculateStats } from "../src/stats.js";
 import { fetchSleeperSeason } from "../src/sleeper.js";
 import { applyDisplayNames } from "./names.js";
 
-export function currentMatchups(snapshot) {
+export function currentMatchups(snapshot, players = {}) {
   const { currentWeek, regularSeasonEnd } = snapshot.metadata;
   if (currentWeek > regularSeasonEnd) return { week: null, status: "season_complete", matchups: [], unpairedTeams: [] };
   const week = snapshot.currentWeekData;
@@ -11,7 +11,14 @@ export function currentMatchups(snapshot) {
   const groups = new Map();
   const unpairedTeams = [];
   for (const entry of week.entries) {
-    const side = { ...teams.get(entry.rosterId), score: entry.score };
+    const starters = Array.isArray(entry.starters) ? entry.starters.map((starter, index) => ({
+      ...starter,
+      slot: snapshot.metadata.startingSlots?.[index] || "—",
+      name: starter.playerId === null ? "Empty slot" : players[starter.playerId]?.name || `Player ${starter.playerId}`,
+      position: players[starter.playerId]?.position || null,
+      nflTeam: players[starter.playerId]?.nflTeam || null,
+    })) : null;
+    const side = { ...teams.get(entry.rosterId), score: entry.score, starters };
     if (entry.matchupId == null) unpairedTeams.push(side);
     else groups.set(entry.matchupId, [...(groups.get(entry.matchupId) || []), side]);
   }
@@ -25,8 +32,8 @@ export function currentMatchups(snapshot) {
 }
 
 export class DashboardService {
-  constructor({ store, leagueId, fetchSeason = fetchSleeperSeason, now = Date.now, log = console }) {
-    Object.assign(this, { store, leagueId, fetchSeason, now, log });
+  constructor({ store, leagueId, playerDirectory = null, fetchSeason = fetchSleeperSeason, now = Date.now, log = console }) {
+    Object.assign(this, { store, leagueId, playerDirectory, fetchSeason, now, log });
     this.saved = null;
     this.lastAttempt = -Infinity;
     this.failure = null;
@@ -45,6 +52,7 @@ export class DashboardService {
     try {
       const snapshot = await this.fetchSeason({ leagueId: this.leagueId, now: new Date(start), strict: true });
       this.saved = await this.store.save(snapshot, new Date(this.now()).toISOString());
+      await this.playerDirectory?.refresh();
       this.failure = null;
       this.log.info("refresh_success", { durationMs: this.now() - start, lastSuccessfulFetchAt: this.saved.lastSuccessfulFetchAt });
     } catch (error) {
@@ -60,6 +68,6 @@ export class DashboardService {
     const warnings = [...snapshot.warnings];
     if (this.failure) warnings.push(this.failure);
     else if (stale) warnings.push("League data has not been updated in over 20 minutes.");
-    return { schemaVersion: 1, stats: calculateStats(snapshot), currentWeekMatchups: currentMatchups(snapshot), lastSuccessfulFetchAt, stale, warnings };
+    return { schemaVersion: 1, stats: calculateStats(snapshot), currentWeekMatchups: currentMatchups(snapshot, this.playerDirectory?.players), lastSuccessfulFetchAt, stale, warnings };
   }
 }

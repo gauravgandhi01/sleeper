@@ -76,8 +76,13 @@ Average includes both boundaries; identical scores are Average. The API retains 
 `greatWeeks` field name for compatibility, displayed as Good in the Stat book.
 Commissioner overrides, including
 zero, take precedence. Invalid/incomplete refreshes retain the previous snapshot.
-Live Scores stops at the end of the regular season. No player breakdowns or
-projections are fetched. Team names, managers, and scores are publicly visible.
+Click a Live Scores matchup to view each team's starters, lineup slots, NFL team,
+position, and fantasy points. Bench players are excluded. Player identity data
+comes only from Sleeper's `/players/nfl` endpoint and is cached on disk for 24 hours.
+Scores come directly from the matchup payload; missing values display as unavailable.
+Refresh keeps the selected matchup open; Back returns to the matchup list.
+Live Scores stops at the end of the regular season. No projections or supplemental
+box-score sources are fetched. Team names, managers, and scores are publicly visible.
 
 ## Persistence, export, and restore
 

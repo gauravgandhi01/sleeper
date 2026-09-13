@@ -140,6 +140,12 @@ function normalizeWeek(week, rawEntries, status) {
       rosterId: Number(entry.roster_id),
       matchupId: entry.matchup_id == null ? null : Number(entry.matchup_id),
       score: scoreForEntry(entry),
+      starters: Array.isArray(entry.starters) ? entry.starters.map((id, index) => {
+        const aligned = Array.isArray(entry.starters_points) && entry.starters_points.length === entry.starters.length;
+        const indexedPoints = aligned ? entry.starters_points[index] : null;
+        const points = Number.isFinite(indexedPoints) ? indexedPoints : entry.players_points?.[id];
+        return { playerId: id == null || String(id) === "0" ? null : String(id), points: Number.isFinite(points) ? points : null };
+      }) : null,
     })),
   };
 }
@@ -287,6 +293,7 @@ export async function fetchSleeperSeason({
       currentWeek,
       lastCompletedWeek,
       scoringLabel: scoringLabel(league.scoring_settings),
+      startingSlots: Array.isArray(league.roster_positions) ? league.roster_positions.filter((slot) => !["BN", "IR", "TAXI"].includes(slot)) : [],
       seasonStartDate: state.season_start_date || null,
       beforeSeasonStart: Boolean(beforeSeasonStart),
       fetchedAt: now.toISOString(),

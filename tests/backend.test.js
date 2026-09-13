@@ -7,6 +7,7 @@ import { SnapshotStore, validateSnapshot } from "../server/store.js";
 import { DashboardService, currentMatchups } from "../server/service.js";
 import { createApp } from "../server/app.js";
 import { fetchSleeperSeason } from "../src/sleeper.js";
+import { PlayerDirectory } from "../server/players.js";
 
 const id = "1395542220504854528";
 const log = { info() {}, warn() {}, error() {} };
@@ -179,4 +180,68 @@ test("browser entrypoint only fetches local APIs and does not poll", async () =>
   const source = await readFile(new URL("../src/app.js", import.meta.url), "utf8");
   assert.doesNotMatch(source, /api\.sleeper|localStorage|setInterval/);
   assert.match(source, /\/api\/refresh/);
+});
+
+test("starter normalization excludes bench and preserves order, zero and negative points", async () => {
+  const base = adapterFetch();
+  const snapshot = await fetchSleeperSeason({ leagueId: id, strict: true, fetchImpl: async (url) => {
+    const response = await base(url);
+    const data = await response.json();
+    if (url.endsWith(`/league/${id}`)) data.roster_positions = ["QB", "FLEX", "DEF", "K", "BN"];
+    if (url.includes("/matchups/")) data.forEach((entry) => {
+      entry.starters = ["p1", "p2", "PIT", "0"];
+      entry.starters_points = [0, -2, 9, 0];
+      entry.players = ["p1", "p2", "PIT", "bench"];
+      entry.players_points = { p1: 5, p2: 4, PIT: 8, bench: 100 };
+    });
+    return { ...response, json: async () => data };
+  }});
+  const result = currentMatchups(snapshot, { p1: { name: "Starter One", position: "QB", nflTeam: "BUF" }, PIT: { name: "Pittsburgh Steelers", position: "DEF", nflTeam: "PIT" } });
+  const starters = result.matchups[0].teams[0].starters;
+  assert.deepEqual(starters.map((s) => s.playerId), ["p1", "p2", "PIT", null]);
+  assert.deepEqual(starters.map((s) => s.points), [0, -2, 9, 0]);
+  assert.deepEqual(starters.map((s) => s.slot), ["QB", "FLEX", "DEF", "K"]);
+  assert.equal(starters[1].name, "Player p2");
+  assert.equal(starters[2].name, "Pittsburgh Steelers");
+  assert.equal(starters[3].name, "Empty slot");
+  assert.equal(result.matchups[0].teams[0].score, 0);
+});
+
+test("missing or misaligned starter scores use ID lookup, not a shifted lineup", async () => {
+  const base = adapterFetch();
+  const snapshot = await fetchSleeperSeason({ leagueId: id, strict: true, fetchImpl: async (url) => {
+    const response = await base(url);
+    const data = await response.json();
+    if (url.includes("/matchups/")) data.forEach((entry) => {
+      entry.starters = ["a", "b", "c"];
+      entry.starters_points = [99];
+      entry.players_points = { a: 0, b: -1 };
+    });
+    return { ...response, json: async () => data };
+  }});
+  assert.deepEqual(snapshot.currentWeekData.entries[0].starters.map((s) => s.points), [0, -1, null]);
+  assert.equal(currentMatchups(fixture()).matchups[0].teams[0].starters, null);
+});
+
+test("player directory caches daily, survives restart and retains names on upstream failure", async (t) => {
+  const { dir } = await setup(t);
+  let calls = 0;
+  let now = Date.now();
+  let fail = false;
+  const fetchImpl = async () => {
+    calls++;
+    return { ok: !fail, status: fail ? 404 : 200, json: async () => ({ p1: { full_name: "Starter", position: "QB", team: "BUF" }, PIT: { first_name: "Pittsburgh", last_name: "Steelers", position: "DEF" } }) };
+  };
+  const directory = new PlayerDirectory(dir, { fetchImpl, now: () => now, log });
+  await directory.initialize();
+  await Promise.all([directory.refresh(), directory.refresh()]);
+  assert.equal(calls, 1);
+  assert.equal(directory.players.PIT.name, "Pittsburgh Steelers");
+  const restored = new PlayerDirectory(dir, { fetchImpl, now: () => now, log });
+  await restored.initialize(); await restored.refresh();
+  assert.equal(calls, 1);
+  now += 24 * 3600000; fail = true;
+  await restored.refresh();
+  assert.equal(calls, 2);
+  assert.equal(restored.players.p1.name, "Starter");
 });

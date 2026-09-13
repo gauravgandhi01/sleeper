@@ -380,6 +380,20 @@ h2 { max-width: 640px; font-size: clamp(1.45rem, 3vw, 2.35rem); }
 .is-leading .matchup-score { color: var(--accent-soft); }
 .matchup-margin { border-top: 1px solid var(--line); padding-top: 12px; margin: 10px 0 0; font-size: .83rem; color: var(--muted); }
 .matchup-updated { max-width: none; margin: 0 0 20px; }
+.matchup-link { width: 100%; text-align: left; color: var(--ink); background: transparent; cursor: pointer; }
+.matchup-link:hover { border-color: var(--accent-soft); background: var(--subtle); }
+.matchup-link .matchup-margin, .matchup-action { display: block; }
+.matchup-action { margin-top: 8px; color: var(--muted); font-size: .78rem; }
+.matchup-detail h2 { margin: 24px 0 12px; }
+.starter-team { min-width: 0; }
+.starter-team > .matchup-side { border-bottom: 1px solid var(--line); margin-bottom: 12px; }
+.starter-table { width: 100%; border-collapse: collapse; text-align: left; font-size: .88rem; }
+.starter-table th, .starter-table td { padding: 12px 8px; border-bottom: 1px solid var(--line); }
+.starter-table th { color: var(--muted); font-size: .75rem; font-weight: 600; }
+.starter-table th:last-child, .starter-points { text-align: right; font-variant-numeric: tabular-nums; }
+.starter-name, .starter-meta { display: block; }
+.starter-meta, .starter-slot { color: var(--muted); font-size: .76rem; }
+.matchup-detail .refresh-button { width: auto; padding-inline: 16px; color: var(--ink); }
 @media (max-width: 760px) {
   .matchup-grid { grid-template-columns: 1fr; }
   .matchup-card { padding: 12px; }
