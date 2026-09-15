@@ -157,7 +157,25 @@ function completeWeekIsValid(week, teamCount) {
     && week.entries.every((entry) => Number.isFinite(entry.score));
 }
 
-function resolveLastCompletedWeek(league, state, startWeek, regularSeasonEnd) {
+/** Calendar cutoff in league time, independent of the server timezone and DST. */
+export function cutoffCompletedWeek(state, season, now) {
+  if (String(state.season) !== String(season)) return 0;
+  const date = state.season_start_date;
+  if (typeof date !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(date) || date.slice(0, 4) !== String(season)) return 0;
+  const start = new Date(`${date}T00:00:00Z`);
+  if (!Number.isFinite(start.getTime()) || !Number.isFinite(now.getTime())) return 0;
+  // The first Tuesday strictly after opening day closes NFL Week 1.
+  const daysToTuesday = (2 - start.getUTCDay() + 7) % 7 || 7;
+  const firstCutoff = start.getTime() + daysToTuesday * 86400000 + 3 * 3600000;
+  const parts = Object.fromEntries(new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/New_York", year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23",
+  }).formatToParts(now).map(({ type, value }) => [type, value]));
+  const localClock = Date.UTC(+parts.year, +parts.month - 1, +parts.day, +parts.hour, +parts.minute, +parts.second);
+  return Math.max(0, Math.floor((localClock - firstCutoff) / (7 * 86400000)) + 1);
+}
+
+function resolveSleeperCompletedWeek(league, state, startWeek, regularSeasonEnd) {
   const raw = league.settings?.last_scored_leg;
   const explicit = Number(raw);
   if (raw != null && Number.isInteger(explicit) && explicit >= 0) {
@@ -175,6 +193,13 @@ function resolveLastCompletedWeek(league, state, startWeek, regularSeasonEnd) {
 
   const currentLeg = positiveInteger(league.settings?.leg, positiveInteger(state.leg, startWeek));
   return Math.min(regularSeasonEnd, Math.max(startWeek - 1, currentLeg - 1));
+}
+
+function resolveLastCompletedWeek(league, state, startWeek, regularSeasonEnd, now) {
+  return Math.min(regularSeasonEnd, Math.max(
+    resolveSleeperCompletedWeek(league, state, startWeek, regularSeasonEnd),
+    cutoffCompletedWeek(state, league.season, now),
+  ));
 }
 
 /**
@@ -225,6 +250,7 @@ export async function fetchSleeperSeason({
     state,
     startWeek,
     regularSeasonEnd,
+    now,
   );
   const weekNumbers = [];
   const rosterIds = new Set(rosters.map((roster) => Number(roster.roster_id)));

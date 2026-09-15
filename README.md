@@ -69,7 +69,15 @@ outage; no usable snapshot returns 503. Data is stale after a failed refresh or
 20 minutes without success. `/healthz` checks storage separately from upstream
 data availability, so Sleeper outages do not cause restart loops.
 
-Only finalized Weeks 1–14 enter statistics. All-zero schedules are preserved for
+Only finalized Weeks 1–14 enter statistics. A week finalizes when Sleeper's
+completion metadata (or week-rollover fallback) indicates completion, or at
+Tuesday 3:00 a.m. America/New_York, whichever happens first. Calendar weeks are
+anchored to Sleeper's NFL season_start_date; Eastern daylight saving is respected.
+If that date is missing, only Sleeper's completion logic applies. This rule is
+evaluated on each successful refresh (background refreshes run every 15 minutes),
+and finalized scores remain eligible for corrections. Incomplete refreshes still
+preserve the previous valid snapshot rather than publishing partial results.
+All-zero schedules are preserved for
 matchup display, but never imply completion. Good/Bad weeks score strictly above/below
 the weekly league median ± one sample standard deviation of that week's team scores.
 Average includes both boundaries; identical scores are Average. The API retains the

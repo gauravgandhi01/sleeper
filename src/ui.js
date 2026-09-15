@@ -414,6 +414,9 @@ function renderMatrixTable(stats) {
   }
   const weeksByNumber = new Map(stats.weeks.map((week) => [week.week, week]));
   if (stats.liveWeek) weeksByNumber.set(stats.liveWeek.week, stats.liveWeek);
+  const seasonScores = [...weeksByNumber.values()].flatMap((week) => week.entries.map((entry) => entry.score)).filter(Number.isFinite);
+  const seasonMin = Math.min(...seasonScores);
+  const seasonMax = Math.max(...seasonScores);
   const table = el("table", "data-table matrix-table");
   table.append(el("caption", "visually-hidden", `${uiState.matrixMode} by team for every regular-season week`));
   const thead = el("thead");
@@ -451,7 +454,18 @@ function renderMatrixTable(stats) {
         week ? "" : "matrix-future",
       ].filter(Boolean).join(" ");
       const cell = el("td", classNames, matrixValue(uiState.matrixMode, entry));
-      if (week?.status === "live") cell.title = "Provisional; excluded from aggregates";
+      if (entry && Number.isFinite(entry.score)) {
+        const intensity = seasonMax === seasonMin ? 0.5 : (entry.score - seasonMin) / (seasonMax - seasonMin);
+        cell.classList.add("matrix-scored");
+        cell.style.setProperty("--score-shade", `${(4 + intensity * 18).toFixed(2)}%`);
+        const aboveMedian = entry.score > week.leagueMedian;
+        if (aboveMedian) {
+          const marker = el("span", "matrix-median-marker", "▴");
+          marker.setAttribute("aria-hidden", "true");
+          cell.append(marker, el("span", "visually-hidden", "; above weekly median"));
+        }
+        cell.title = `Score ${point(entry.score)} · Weekly median ${point(week.leagueMedian)}${aboveMedian ? " · Above median" : ""}${week.status === "live" ? " · Provisional; excluded from aggregates" : ""}`;
+      }
       row.append(cell);
     });
     const summary = uiState.matrixMode === "score"
@@ -523,14 +537,12 @@ function renderBenchmarks(stats) {
 
 function statbookColumns() {
   return [
-    { group: "Scoring", label: "Games", key: "games", format: integer },
     { group: "Scoring", label: "Total", key: "total", format: point },
     { group: "Scoring", label: "Average", key: "average", format: point },
     { group: "Scoring", label: ">120", key: "over120", format: integer },
     { group: "Scoring", label: "<110", key: "under110", format: integer },
     { group: "Scoring", label: "Best", key: "bestScore", format: point },
     { group: "Scoring", label: "Worst", key: "worstScore", format: point },
-    { group: "Scoring", label: "Range", key: "scoreRange", format: point },
     { group: "Scoring", label: "Score SD", key: "scoreDeviation", format: point },
     { group: "Median", label: "Record", key: "medianWinPct", format: (_, team) => team.medianRecord },
     { group: "Median", label: "Win %", key: "medianWinPct", format: percentage },
@@ -538,7 +550,7 @@ function statbookColumns() {
     { group: "Median", label: "Good", key: "greatWeeks", format: integer },
     { group: "Median", label: "Average", key: "averageWeeks", format: integer },
     { group: "Median", label: "Bad", key: "badWeeks", format: integer },
-    { group: "Rank", label: "Average", key: "averageRank", format: rank },
+    { group: "Rank", label: "Average", key: "averageRank", format: point },
     { group: "Rank", label: "SD", key: "rankDeviation", format: rank },
     { group: "Rank", label: "Best", key: "bestRank", format: integer },
     { group: "Rank", label: "Worst", key: "worstRank", format: integer },
@@ -582,7 +594,9 @@ function renderStatbookTable(stats) {
     row.append(identity);
     columns.forEach((column) => {
       const cell = el("td");
-      const rendered = column.format(team[column.key], team);
+      // Only record formatting needs the team; passing it as point's second
+      // argument accidentally coerces its precision to zero decimal places.
+      const rendered = column.label === "Record" ? column.format(team[column.key], team) : column.format(team[column.key]);
       if (column.key === "averageDeltaMedian") cell.className = team[column.key] > 0 ? "positive" : team[column.key] < 0 ? "negative" : "";
       if (column.label === "Record") cell.append(el("span", "record-pill", rendered));
       else cell.textContent = rendered;

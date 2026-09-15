@@ -6,7 +6,7 @@ import { join } from "node:path";
 import { SnapshotStore, validateSnapshot } from "../server/store.js";
 import { DashboardService, currentMatchups } from "../server/service.js";
 import { createApp } from "../server/app.js";
-import { fetchSleeperSeason } from "../src/sleeper.js";
+import { fetchSleeperSeason, cutoffCompletedWeek } from "../src/sleeper.js";
 import { PlayerDirectory } from "../server/players.js";
 import { DraftBoard, normalizeDraft } from "../server/draft.js";
 
@@ -52,6 +52,35 @@ test("draft cache survives restart and failures, with mapped manager headers", a
 
 const id = "1395542220504854528";
 const log = { info() {}, warn() {}, error() {} };
+test("Tuesday 3am Eastern cutoff respects exact boundary, season and daylight saving", () => {
+  const state = { season: "2026", season_start_date: "2026-09-09" };
+  const completed = (date) => cutoffCompletedWeek(state, "2026", new Date(date));
+  assert.equal(completed("2026-09-09T12:00:00Z"), 0);
+  assert.equal(completed("2026-09-15T06:59:59Z"), 0);
+  assert.equal(completed("2026-09-15T07:00:00Z"), 1);
+  assert.equal(completed("2026-09-22T07:00:00Z"), 2);
+  assert.equal(completed("2026-11-03T07:59:59Z"), 7);
+  assert.equal(completed("2026-11-03T08:00:00Z"), 8);
+  assert.equal(cutoffCompletedWeek(state, "2027", new Date("2027-09-20")), 0);
+  assert.equal(cutoffCompletedWeek({ season: "2026" }, "2026", new Date()), 0);
+});
+
+test("earliest of Sleeper completion and calendar cutoff finalizes even zero scores", async () => {
+  const fetchAt = (date, last = 0, partial = false) => fetchSleeperSeason({ leagueId: id, strict: true, now: new Date(date), fetchImpl: async (url) => {
+    const response = await adapterFetch({ last, partial })(url);
+    const data = await response.json();
+    if (url.endsWith("/state/nfl")) data.season_start_date = "2026-09-09";
+    return { ...response, json: async () => data };
+  } });
+  assert.equal((await fetchAt("2026-09-15T06:59:59Z")).completedWeeks.length, 0);
+  const cutoff = await fetchAt("2026-09-15T07:00:00Z");
+  assert.equal(cutoff.completedWeeks.length, 1);
+  assert.equal(cutoff.currentWeekData.status, "final");
+  assert.equal(cutoff.liveWeek, null);
+  assert.equal((await fetchAt("2026-09-14T12:00:00Z", 1)).completedWeeks.length, 1);
+  assert.equal((await fetchAt("2027-01-01T12:00:00Z")).completedWeeks.length, 14);
+  await assert.rejects(fetchAt("2026-09-15T07:00:00Z", 0, true), /incomplete/);
+});
 function fixture() {
   return {
     metadata: { leagueId: id, name: "True League", season: "2026", teamCount: 2, startWeek: 1, regularSeasonEnd: 14, currentWeek: 2, lastCompletedWeek: 1, fetchedAt: "2026-09-09T12:00:00Z" },

@@ -62,9 +62,9 @@
     <nav class="section-tabs" role="tablist" aria-label="Dashboard sections">
       <button class="section-tab active" id="overviewTab" type="button" role="tab" aria-selected="true" aria-controls="overviewView" data-view="overviewView">Scoreboard</button>
       <button class="section-tab" id="liveTab" type="button" role="tab" aria-selected="false" aria-controls="liveView" data-view="liveView" tabindex="-1">Live Scores</button>
-      <button class="section-tab" id="draftTab" type="button" role="tab" aria-selected="false" aria-controls="draftView" data-view="draftView" tabindex="-1">Draft Board</button>
       <button class="section-tab" id="weeklyTab" type="button" role="tab" aria-selected="false" aria-controls="weeklyView" data-view="weeklyView">Trends</button>
       <button class="section-tab" id="statbookTab" type="button" role="tab" aria-selected="false" aria-controls="statbookView" data-view="statbookView">Stat book</button>
+      <button class="section-tab" id="draftTab" type="button" role="tab" aria-selected="false" aria-controls="draftView" data-view="draftView" tabindex="-1">Draft Board</button>
     </nav>
 
     <section id="overviewView" class="dashboard-view" role="tabpanel" aria-labelledby="overviewTab">
@@ -73,6 +73,7 @@
           <div>
             <p class="eyebrow accent">Regular season · Weeks 1–14</p>
             <h1 id="matrixTitle">Weekly scoring matrix</h1>
+            <p class="section-note">Stronger shading = higher score across the season, including live scores. ▴ Above that week’s median.</p>
           </div>
           <div id="matrixControls" class="segmented-control" aria-label="Performance matrix metric"></div>
         </div>
