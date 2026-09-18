@@ -14,6 +14,8 @@
   --negative: #934c57;
   --positive-bg: #edf3f8;
   --negative-bg: #f8eef0;
+  --score-low: #b65d65;
+  --score-high: #4b9270;
   --shadow: 0 16px 48px rgba(0, 0, 0, .06);
   --radius: 16px;
 }
@@ -365,7 +367,7 @@ h2 { max-width: 640px; font-size: clamp(1.45rem, 3vw, 2.35rem); }
 .matrix-live-head { color: var(--accent-soft) !important; }
 .matrix-live-label { display: block; margin-top: 2px; color: var(--accent-soft); font-size: .56rem; letter-spacing: .08em; }
 .matrix-live-cell { box-shadow: inset 2px 0 0 var(--line), inset -2px 0 0 var(--line); }
-.matrix-table tbody td.matrix-scored { position: relative; background-color: color-mix(in srgb, var(--ink) var(--score-shade), var(--panel)); }
+.matrix-table tbody td.matrix-scored { position: relative; background-color: color-mix(in srgb, var(--score-color) var(--score-shade), var(--panel)); }
 .matrix-median-marker { position: absolute; right: 3px; top: 2px; font-size: .65rem; line-height: 1; color: var(--ink); }
 
 .live-panel { margin: 28px 0 18px; padding: 22px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--subtle); }
@@ -482,6 +484,8 @@ h2 { max-width: 640px; font-size: clamp(1.45rem, 3vw, 2.35rem); }
     --negative: #dfa2ad;
     --positive-bg: #25313e;
     --negative-bg: #39292f;
+    --score-low: #cf7f85;
+    --score-high: #79b891;
     --shadow: 0 16px 48px rgba(0, 0, 0, .18);
 }
 @media (prefers-color-scheme: dark) {
@@ -501,6 +505,8 @@ h2 { max-width: 640px; font-size: clamp(1.45rem, 3vw, 2.35rem); }
     --negative: #dfa2ad;
     --positive-bg: #25313e;
     --negative-bg: #39292f;
+    --score-low: #cf7f85;
+    --score-high: #79b891;
     --shadow: 0 16px 48px rgba(0, 0, 0, .18);
   }
 }
@@ -521,8 +527,21 @@ h2 { max-width: 640px; font-size: clamp(1.45rem, 3vw, 2.35rem); }
   cursor: pointer;
   font-size: .82rem;
 }
+.season-control select { max-width: 155px; }
+.season-control { flex: 0 0 auto; }
+.archive-recap { margin-bottom: 18px; }
+.archive-recap h2 { font-size: 1.15rem; }
+.archive-recap summary { cursor: pointer; padding: 12px 0; }
+.history-table { margin-block: 12px; }
+.history-table th:first-child { text-align: left; }
+.owner-title { margin: 20px 0 8px; }
+.owner-button { border: 0; background: none; color: var(--ink); padding: 8px 0; font: inherit; text-align: left; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+.season-link { color: var(--ink); text-underline-offset: 3px; }
+.matrix-table .owner-highlight td { border-top: 2px solid var(--accent); border-bottom: 2px solid var(--accent); }
+[hidden] { display: none !important; }
 :where(button, select, input, a):focus-visible { outline: 2px solid var(--accent-soft); outline-offset: 3px; }
 @media (max-width: 900px) {
+  .header-inner { flex-wrap: wrap; gap: 12px; padding-block: 10px; }
   .data-status small { display: none; }
   .header-actions { gap: 10px; }
 }

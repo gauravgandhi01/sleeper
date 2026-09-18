@@ -2,6 +2,7 @@
  * @typedef {Object} TeamIdentity
  * @property {number} rosterId
  * @property {string[]} ownerIds
+ * @property {string[]} [canonicalOwnerIds] Stable cross-platform owner identities.
  * @property {string[]} managerNames
  * @property {string} managerName
  * @property {string} teamName

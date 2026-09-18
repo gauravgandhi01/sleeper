@@ -32,6 +32,10 @@
           <strong id="brandName" class="visually-hidden">TrueWatch</strong>
         </span>
       </a>
+      <label class="theme-control season-control">
+        <span class="visually-hidden">Season</span>
+        <select id="seasonSelect" aria-label="Season"><option value="2026">2026 · Current</option></select>
+      </label>
       <div class="header-actions">
         <label class="theme-control">
           <span class="visually-hidden">Color theme</span>
@@ -64,16 +68,18 @@
       <button class="section-tab" id="liveTab" type="button" role="tab" aria-selected="false" aria-controls="liveView" data-view="liveView" tabindex="-1">Live Scores</button>
       <button class="section-tab" id="weeklyTab" type="button" role="tab" aria-selected="false" aria-controls="weeklyView" data-view="weeklyView">Trends</button>
       <button class="section-tab" id="statbookTab" type="button" role="tab" aria-selected="false" aria-controls="statbookView" data-view="statbookView">Stat book</button>
+      <button class="section-tab" id="ownersTab" type="button" role="tab" aria-selected="false" aria-controls="ownersView" data-view="ownersView" tabindex="-1">Owners</button>
       <button class="section-tab" id="draftTab" type="button" role="tab" aria-selected="false" aria-controls="draftView" data-view="draftView" tabindex="-1">Draft Board</button>
     </nav>
 
     <section id="overviewView" class="dashboard-view" role="tabpanel" aria-labelledby="overviewTab">
+      <div id="seasonRecap"></div>
       <section class="panel section-panel matrix-primary" aria-labelledby="matrixTitle">
         <div class="section-heading compact">
           <div>
-            <p class="eyebrow accent">Regular season · Weeks 1–14</p>
+            <p id="seasonRange" class="eyebrow accent">Regular season · Weeks 1–14</p>
             <h1 id="matrixTitle">Weekly scoring matrix</h1>
-            <p class="section-note">Stronger shading = higher score across the season, including live scores. ▴ Above that week’s median.</p>
+            <p class="section-note">Red to green = lower to higher scores across the season, including live scores. ▴ Above that week’s median.</p>
           </div>
           <div id="matrixControls" class="segmented-control" aria-label="Performance matrix metric"></div>
         </div>
@@ -81,6 +87,17 @@
       </section>
     </section>
 
+    <section id="ownersView" class="dashboard-view" role="tabpanel" aria-labelledby="ownersTab" hidden>
+      <section class="panel section-panel">
+        <div class="section-heading compact">
+          <h2>Owner careers</h2>
+          <label><input id="currentOwnersOnly" type="checkbox"> Current owners only</label>
+        </div>
+        <p class="section-note">Regular-season results across all seasons. Scoring spans different league formats and is not normalized across eras.</p>
+        <div id="ownersStatus" role="status"></div>
+        <div id="ownersContent"></div>
+      </section>
+    </section>
     <section id="liveView" class="dashboard-view" role="tabpanel" aria-labelledby="liveTab" hidden>
       <div id="liveWeekRegion"></div>
     </section>
@@ -95,10 +112,10 @@
       <section class="panel section-panel" aria-labelledby="trendTitle">
         <div class="section-heading">
           <div>
-            <p class="eyebrow accent">Score trajectories</p>
-            <h2 id="trendTitle">Weekly trends</h2>
+            <p class="eyebrow accent">Season scoring progression</p>
+            <h2 id="trendTitle">Cumulative score vs median</h2>
           </div>
-          <div id="trendControls" class="team-filter" aria-label="Teams shown on chart"></div>
+          <div id="trendControls" class="team-filter" aria-label="Owners shown on chart"></div>
         </div>
         <div id="trendChart"></div>
       </section>
@@ -131,7 +148,7 @@
   <footer class="site-footer">
     <div class="shell footer-inner">
       <span>TrueWatch · True League</span>
-      <span>League data from <a href="https://sleeper.com/" rel="noreferrer">Sleeper</a></span>
+      <span>Current data from <a href="https://sleeper.com/" rel="noreferrer">Sleeper</a> · Historical seasons from ESPN</span>
     </div>
   </footer>
 

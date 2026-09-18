@@ -1,7 +1,8 @@
 # True League on Sleeper
 
 Node 24 / Express 5 hosts the dashboard and a shared Sleeper snapshot service.
-Only this directory is deployed. The ESPN dashboard is independent.
+Only this directory is deployed. ESPN seasons 2018–2025 are bundled as an offline
+archive; the original historical dashboard and its generator remain independent.
 
 ## Local development
 
@@ -26,14 +27,20 @@ Environment settings:
 | DATA_DIR | sleeper/.data | Persistent snapshot directory |
 | PUBLIC_BASE_URL | RENDER_EXTERNAL_URL, then localhost | Absolute site URL used for social previews |
 | NODE_ENV | Set to production on Render | Express production mode |
+| CURRENT_SEASON | 2026 | Catalog fallback before the first successful live snapshot; the saved league season takes precedence |
 
 ## Render deployment
 
-Create a Blueprint from this repository. Set the **Blueprint Path** to
-`sleeper/render.yaml` (Render normally searches the repository root). The
-Blueprint provisions one Starter web service with root directory `sleeper`, a
-1 GB disk at `/var/data`, build `npm ci && npm test`, start `npm start`, and
+For the standalone **sleeper remote**, use Blueprint Path `render.yaml` and root
+directory `.` (the supplied Blueprint defaults). If deploying from the parent
+fantasy repository instead, use Blueprint Path `sleeper/render.yaml` and change
+the Blueprint's rootDir to `sleeper`. Only the application directory is needed.
+The Blueprint provisions one Starter web service with a
+1 GB disk at `/var/data`, build `npm ci --include=dev && npm test`, start `npm start`, and
 health path `/healthz`. The Node major is pinned by `.node-version` and engines.
+The explicit dev inclusion installs the DOM test dependency even when
+NODE_ENV=production; it is not used by the running server. Update the build
+command on an existing manually configured Render service before deploying.
 
 Alternatively create a web service manually using those same values. Set
 `DATA_DIR=/var/data/sleeper`, `NODE_ENV=production`, and the league ID above.
@@ -94,6 +101,9 @@ box-score sources are fetched. Team names, managers, and scores are publicly vis
 
 ## Persistence, export, and restore
 
+The versioned ESPN archive in `data/history.json` ships with the application,
+not the persistent disk. Live snapshot recovery does not change archived data.
+
 Each league has `DATA_DIR/<leagueId>/latest.json` and `revisions/`. Snapshots
 include a schema version and content checksum. Writes use temporary files and
 atomic rename. Changed normalized data creates an archive; successful checks
@@ -114,6 +124,72 @@ restore the exported league directory to the same DATA_DIR, and restart. Do not
 edit individual scores in snapshot JSON: checksums will reject edited snapshots.
 To recover from latest.json corruption alone, restart and let archive fallback
 recover automatically. Preserve the original files until recovery is verified.
+
+## Historical seasons and owner careers
+
+The season selector defaults to the current Sleeper season. `?season=2025`
+opens an archive, and `?season=2025&owner=gaurav` highlights an owner's team.
+ESPN seasons reuse Scoreboard, Trends, and Stat book with the original team
+counts and 13/14-week regular seasons. Historical Live Scores and Draft Board
+are hidden; no ESPN starter or draft data is fabricated. A compact recap shows
+the champion and expandable source final standings. The 2022 corrected title
+is attributed to Gaurav while ESPN's original finishing positions remain intact.
+
+The Owners tab covers all 14 historical identities, with a current-owner filter,
+career totals, and season links. Regular-season records and scoring include
+only finalized games; championships require an explicit imported designation.
+Points/game is weighted by scored weeks, not an average of season averages.
+The current season never acquires a championship based on regular-season rank.
+Historical scoring spans different formats and is not normalized across eras.
+
+`server/identities.js` explicitly links ESPN manager keys to stable canonical
+IDs and Sleeper user IDs. Display names and team names are never used as runtime
+identity joins. Daniel Pyo / Ethan Miller (former), present in 2018–2020, remains
+separate from the current Ethan Miller. Unrecognized live user IDs get a
+namespaced `sleeper:` identity rather than an inferred historical match.
+
+Additional API behavior (all responses remain `no-store`):
+
+- `GET /api/seasons`: current season and available archive seasons.
+- `GET /api/dashboard?season=YYYY`: selected season; an unavailable year returns
+  404. Archive responses include `source`, `provenance`, and `recap`, with no live
+  matchups or draft board. Omission preserves the current-season response.
+- `GET /api/owners`: career totals and season rows, plus current-data availability
+  and staleness. Historical results work even during a cold Sleeper outage.
+- `POST /api/refresh`: always refreshes only the current Sleeper season.
+
+To regenerate from the original dashboard locally, run from this directory:
+
+```sh
+npm run import:history -- ../index.html data/history.json
+```
+
+The importer parses embedded JSON without executing HTML/JavaScript, then applies
+the bundled full-precision API extract in `data/espn-scores.json`. It requires that
+extract and will not silently fall back to the HTML's rounded scores. It checks
+all eight seasons, roster coverage, opponents, records, and totals before
+writing. The imported artifact is deterministic and explicitly unignored.
+Review its diff before committing. Neither root HTML nor ESPN credentials,
+Python, or network access is needed to build or run the standalone service.
+
+**Source precision:** all 1,224 archived weekly scores and the standings totals
+have been retrieved directly from ESPN at their original API precision. No
+rounding is applied during import or calculation; the UI displays points to two
+decimals. Each season's records match exactly, and PF/PA reconcile within 0.000001
+points (floating-point tolerance only). The historical 2020 matchup that looked
+tied in the old rounded HTML is now correctly represented by its distinct scores.
+
+To refresh the original ESPN extract, set `ESPN_S2` and `SWID` in your local process
+environment and run `npm run fetch:history`. Do not commit credentials or put them
+in the Render environment: ESPN is only contacted by this explicit maintenance
+command. It validates all eight seasons before atomically replacing each data
+file. Only scoring fields are retained, not authentication or raw member data.
+The archive's owner links and manual championship corrections remain unchanged.
+
+Tests cover imported/source reconciliation, corruption rejection, owner links,
+career weighting, archived HTTP access without live data, tab/owner interactions,
+keyboard navigation, and late-response race protection. DOM tests are not a
+substitute for a visual browser check at mobile, tablet, and desktop widths.
 
 ## Draft board
 

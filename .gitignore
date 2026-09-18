@@ -6,3 +6,4 @@ node_modules/
 !package-lock.json
 !README.md
 !mapping.txt
+!data/*.json

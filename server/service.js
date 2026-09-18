@@ -1,6 +1,7 @@
 import { calculateStats } from "../src/stats.js";
 import { fetchSleeperSeason } from "../src/sleeper.js";
 import { applyDisplayNames } from "./names.js";
+import { linkCurrentOwners } from "./identities.js";
 
 export function currentMatchups(snapshot, players = {}) {
   const { currentWeek, regularSeasonEnd } = snapshot.metadata;
@@ -63,7 +64,7 @@ export class DashboardService {
   dashboard() {
     if (!this.saved) return null;
     const { lastSuccessfulFetchAt } = this.saved;
-    const snapshot = applyDisplayNames(this.saved.snapshot);
+    const snapshot = linkCurrentOwners(applyDisplayNames(this.saved.snapshot));
     const stale = Boolean(this.failure) || this.now() - Date.parse(lastSuccessfulFetchAt) > 20 * 60000;
     const warnings = [...snapshot.warnings];
     if (this.failure) warnings.push(this.failure);

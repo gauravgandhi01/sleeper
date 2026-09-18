@@ -11,6 +11,11 @@ const uiState = {
 };
 
 let refreshHandler = () => {};
+let seasonHandler = () => {};
+let lastStats = null;
+let highlightedOwner = null;
+let ownerData = null;
+let selectedOwner = null;
 
 function el(tag, className = "", text = null) {
   const node = document.createElement(tag);
@@ -144,6 +149,10 @@ function renderHeader(stats, context) {
   }
 
   byId("dataStatus").classList.toggle("is-stale", Boolean(context.isStale));
+  if (context.source === "espn") {
+    byId("statusTitle").textContent = "ESPN archive";
+    byId("statusDetail").textContent = `${metadata.season} · ${completed} finalized weeks`;
+  }
 }
 
 function renderNotice(stats, context) {
@@ -295,7 +304,7 @@ function renderTrendControls(stats) {
       else if (uiState.selectedRosters.size > 1) uiState.selectedRosters.delete(team.rosterId);
       renderTrend(stats);
     });
-    label.append(input, document.createTextNode(team.teamName));
+    label.append(input, document.createTextNode(team.managerName));
     root.append(label);
   });
 }
@@ -309,12 +318,19 @@ function renderTrendChart(stats) {
   }
 
   const selected = stats.teams.filter((team) => uiState.selectedRosters.has(team.rosterId));
-  const values = stats.weeks.flatMap((week) => [
-    week.leagueMedian,
-    ...selected.map((team) => week.entries.find((entry) => entry.rosterId === team.rosterId)?.score).filter(Number.isFinite),
-  ]);
-  let yMin = Math.floor((Math.min(...values) - 10) / 10) * 10;
-  let yMax = Math.ceil((Math.max(...values) + 10) / 10) * 10;
+  const series = selected.map((team) => {
+    let total = 0;
+    const points = stats.weeks.map((week, index) => {
+      const score = week.entries.find((entry) => entry.rosterId === team.rosterId)?.score;
+      if (!Number.isFinite(score) || !Number.isFinite(week.leagueMedian)) return null;
+      total += score - week.leagueMedian;
+      return { week: week.week, index, score: total };
+    }).filter(Boolean);
+    return { team, points };
+  });
+  const values = series.flatMap(({ points }) => points.map((entry) => entry.score));
+  let yMin = Math.floor((Math.min(0, ...values) - 10) / 25) * 25;
+  let yMax = Math.ceil((Math.max(0, ...values) + 10) / 25) * 25;
   if (yMin === yMax) { yMin -= 10; yMax += 10; }
 
   const width = 980;
@@ -333,8 +349,8 @@ function renderTrendChart(stats) {
     "aria-labelledby": "trendSvgTitle trendSvgDesc",
   });
   svg.append(svgEl("title", { id: "trendSvgTitle" }), svgEl("desc", { id: "trendSvgDesc" }));
-  svg.querySelector("title").textContent = "Selected team scores by finalized week";
-  svg.querySelector("desc").textContent = "Solid lines show selected teams. The dashed line shows each week's league median.";
+  svg.querySelector("title").textContent = "Cumulative score versus median by owner";
+  svg.querySelector("desc").textContent = "Each line sums an owner's weekly score minus that week's league median across finalized regular-season weeks. Above zero means cumulatively above median; below zero means below median. Live scores are excluded.";
 
   for (let step = 0; step <= 4; step += 1) {
     const value = yMin + ((yMax - yMin) * step / 4);
@@ -350,27 +366,21 @@ function renderTrendChart(stats) {
     svg.append(label);
   });
 
-  const medianPath = stats.weeks.map((week, index) => `${index ? "L" : "M"}${x(index)},${y(week.leagueMedian)}`).join(" ");
-  svg.append(svgEl("path", { class: "chart-median", d: medianPath }));
-
-  selected.forEach((team) => {
+  svg.append(svgEl("line", { class: "chart-median", x1: margin.left, x2: width - margin.right, y1: y(0), y2: y(0), "aria-label": "Zero cumulative difference from weekly medians" }));
+  series.forEach(({ team, points }) => {
     const color = colorForTeam(team, stats.teams);
-    const points = stats.weeks.map((week, index) => ({
-      week: week.week,
-      score: week.entries.find((entry) => entry.rosterId === team.rosterId)?.score,
-      x: x(index),
-    })).filter((entry) => Number.isFinite(entry.score));
-    const path = points.map((entry, index) => `${index ? "L" : "M"}${entry.x},${y(entry.score)}`).join(" ");
+    const path = points.map((entry, index) => `${index ? "L" : "M"}${x(entry.index)},${y(entry.score)}`).join(" ");
     svg.append(svgEl("path", { class: "chart-line", d: path, stroke: color }));
     points.forEach((entry) => {
-      const dot = svgEl("circle", { class: "chart-dot", cx: entry.x, cy: y(entry.score), r: 5, fill: color, tabindex: 0 });
+      const description = `${team.managerName}, through Week ${entry.week}: ${signed(entry.score)} cumulative vs median`;
+      const dot = svgEl("circle", { class: "chart-dot", cx: x(entry.index), cy: y(entry.score), r: 5, fill: color, tabindex: 0, "aria-label": description });
       const title = svgEl("title");
-      title.textContent = `${team.teamName}, Week ${entry.week}: ${point(entry.score)}`;
+      title.textContent = description;
       dot.append(title);
       svg.append(dot);
     });
   });
-  wrap.append(svg, el("p", "chart-legend-note", "Dashed line: weekly league median · Choose up to four teams"));
+  wrap.append(svg, el("p", "chart-legend-note", "Running sum of score minus each week’s median · Dashed line: zero · Finalized weeks only · Choose up to four owners"));
   root.append(wrap);
 }
 
@@ -443,6 +453,7 @@ function renderMatrixTable(stats) {
   const tbody = el("tbody");
   sortedTeams(stats.teams, { key: "total", direction: "desc" }).forEach((team) => {
     const row = el("tr");
+    if (highlightedOwner && team.canonicalOwnerIds?.includes(highlightedOwner)) row.className = "owner-highlight";
     const identity = el("td");
     identity.append(makeTeamLabel(team));
     row.append(identity);
@@ -457,7 +468,8 @@ function renderMatrixTable(stats) {
       if (entry && Number.isFinite(entry.score)) {
         const intensity = seasonMax === seasonMin ? 0.5 : (entry.score - seasonMin) / (seasonMax - seasonMin);
         cell.classList.add("matrix-scored");
-        cell.style.setProperty("--score-shade", `${(4 + intensity * 18).toFixed(2)}%`);
+        cell.style.setProperty("--score-color", intensity < 0.5 ? "var(--score-low)" : "var(--score-high)");
+        cell.style.setProperty("--score-shade", `${(Math.abs(intensity - 0.5) * 60).toFixed(2)}%`);
         const aboveMedian = entry.score > week.leagueMedian;
         if (aboveMedian) {
           const marker = el("span", "matrix-median-marker", "▴");
@@ -629,7 +641,7 @@ function renderGlossary(stats) {
     ["Median weekly median", "The median of the weekly league-median values."],
     ["Mean pts > median", "The average of every team-week score-minus-median value."],
     ["Mean pts deviation", "Population standard deviation of all score-minus-weekly-median values."],
-    ["Finalized only", "Live scores are visible but never affect aggregates until Sleeper finalizes the week."],
+    ["Finalized only", "Live scores enter aggregates when Sleeper finalizes the week or Tuesday at 3 a.m. Eastern, whichever comes first. Archived regular-season scores are finalized."],
   ];
   items.forEach(([term, definition]) => {
     const wrapper = el("dl", "glossary-item");
@@ -644,16 +656,21 @@ function renderStatbook(stats) {
   renderGlossary(stats);
 }
 
-export function initializeUi({ onRefresh }) {
+export function initializeUi({ onRefresh, onSeasonChange = () => {} }) {
   refreshHandler = onRefresh;
+  seasonHandler = onSeasonChange;
+  byId("seasonSelect").addEventListener("change", (event) => seasonHandler(event.target.value));
+  byId("currentOwnersOnly").addEventListener("change", () => { selectedOwner = null; renderOwners(ownerData); });
   byId("refreshButton").addEventListener("click", refreshHandler);
   const tabs = [...document.querySelectorAll('[role="tab"]')];
-  tabs.forEach((tab, index) => {
+  tabs.forEach((tab) => {
     tab.tabIndex = tab.getAttribute("aria-selected") === "true" ? 0 : -1;
     tab.addEventListener("click", () => activateTab(tab));
     tab.addEventListener("keydown", (event) => {
       if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
       event.preventDefault();
+      const tabs = [...document.querySelectorAll('[role="tab"]')].filter((item) => !item.hidden);
+      const index = tabs.indexOf(tab);
       let next = index;
       if (event.key === "ArrowLeft") next = (index - 1 + tabs.length) % tabs.length;
       if (event.key === "ArrowRight") next = (index + 1) % tabs.length;
@@ -724,17 +741,24 @@ function renderDraftBoard(board) {
 }
 
 export function renderLoading() {
+  byId("seasonRecap").replaceChildren();
+  byId("trendChart").replaceChildren(el("p", "section-note", "Loading season…"));
+  byId("trendControls").replaceChildren();
+  byId("statbookTable").replaceChildren();
+  byId("leagueBenchmarks").replaceChildren();
   byId("draftBoard").replaceChildren(el("p", "section-note", "Loading draft…"));
   byId("liveWeekRegion").replaceChildren(el("p", "section-note", "Loading matchups…"));
   byId("matrixControls").replaceChildren();
-  byId("matrixTable").replaceChildren(emptyState("Loading weekly scores", "Connecting to Sleeper.", "↻"));
+  byId("matrixTable").replaceChildren(emptyState("Loading weekly scores", "Loading selected season.", "↻"));
 }
 
 export function renderError(error) {
+  byId("trendChart").replaceChildren(emptyState("Season unavailable", "Choose another season or retry."));
+  byId("statbookTable").replaceChildren(emptyState("Season unavailable", "Choose another season or retry."));
   renderDraftBoard(null);
   byId("liveWeekRegion").replaceChildren(emptyState("Matchups unavailable", "Use Refresh to try again."));
   byId("noticeRegion").replaceChildren();
-  byId("statusTitle").textContent = "Sleeper unavailable";
+  byId("statusTitle").textContent = "Season unavailable";
   byId("statusDetail").textContent = "No saved league data is available";
   byId("matrixControls").replaceChildren();
   byId("matrixTable").replaceChildren(emptyState("Scores unavailable", error?.message || "Sleeper data could not be loaded.", "!"));
@@ -742,12 +766,20 @@ export function renderError(error) {
   panel.append(el("h2", "", "Could not load league statistics"), el("p", "", error?.message || "Sleeper data could not be loaded."));
   const retry = el("button", "primary-button", "Try again");
   retry.type = "button";
-  retry.addEventListener("click", refreshHandler);
+  retry.addEventListener("click", () => seasonHandler(byId("seasonSelect").value));
   panel.append(retry);
   byId("matrixTable").replaceChildren(panel);
 }
 
 export function renderDashboard(stats, context = {}) {
+  if (lastStats && lastStats.metadata.season !== stats.metadata.season) {
+    const selected = new Set(lastStats.teams.filter((team) => uiState.selectedRosters.has(team.rosterId)).flatMap((team) => team.canonicalOwnerIds || []));
+    uiState.selectedRosters = new Set(stats.teams.filter((team) => team.canonicalOwnerIds?.some((id) => selected.has(id))).slice(0, 4).map((team) => team.rosterId));
+    uiState.selectedMatchup = null;
+  }
+  lastStats = stats;
+  byId("seasonRange").textContent = `Regular season · Weeks ${stats.metadata.startWeek}–${stats.metadata.regularSeasonEnd} · ${stats.metadata.teamCount} teams`;
+  renderRecap(context);
   renderHeader(stats, context);
   renderNotice(stats, context);
   renderMatrix(stats);
@@ -755,6 +787,122 @@ export function renderDashboard(stats, context = {}) {
   renderLiveWeek(stats, context);
   renderDraftBoard(context.draftBoard);
   renderStatbook(stats);
+  if (highlightedOwner) byId("matrixTable").querySelector(".owner-highlight")?.scrollIntoView({ block: "nearest", inline: "nearest" });
+}
+
+export function renderSeasons(catalog, selected) {
+  const select = byId("seasonSelect");
+  select.replaceChildren(...catalog.seasons.map((season) => {
+    const option = el("option", "", `${season.season} · ${season.current ? "Current" : "ESPN"}`);
+    option.value = season.season;
+    return option;
+  }));
+  if (![...select.options].some((option) => option.value === selected)) {
+    const unknown = el("option", "", `${selected} · Unavailable`);
+    unknown.value = selected;
+    select.append(unknown);
+  }
+  select.value = selected;
+}
+
+export function prepareSeason(year, archived, ownerId) {
+  byId("seasonSelect").value = year;
+  byId("brandSeason").textContent = `True League · ${year}`;
+  highlightedOwner = ownerId;
+  uiState.selectedMatchup = null;
+  byId("refreshButton").hidden = archived;
+  const active = document.querySelector('[role="tab"][aria-selected="true"]');
+  for (const id of ["liveTab", "draftTab"]) byId(id).hidden = archived;
+  if (ownerId || active?.hidden) activateTab(byId("overviewTab"));
+  byId("noticeRegion").replaceChildren();
+}
+
+function simpleTable(headers, rows, captionText) {
+  const wrap = el("div", "table-scroll");
+  wrap.tabIndex = 0;
+  wrap.setAttribute("role", "region");
+  wrap.setAttribute("aria-label", captionText);
+  const table = el("table", "data-table history-table");
+  table.append(el("caption", "visually-hidden", captionText));
+  const head = el("thead");
+  const heading = el("tr");
+  headers.forEach((label) => { const th = el("th", "", label); th.scope = "col"; heading.append(th); });
+  head.append(heading);
+  const body = el("tbody");
+  rows.forEach((values) => {
+    const row = el("tr");
+    values.forEach((value, index) => {
+      const cell = el(index === 0 ? "th" : "td");
+      if (index === 0) cell.scope = "row";
+      if (value instanceof Node) cell.append(value);
+      else cell.textContent = value;
+      row.append(cell);
+    });
+    body.append(row);
+  });
+  table.append(head, body);
+  wrap.append(table);
+  return wrap;
+}
+
+const recordText = (row) => `${row.wins}-${row.losses}${row.ties ? `-${row.ties}` : ""}`;
+
+function renderRecap(context) {
+  const root = byId("seasonRecap");
+  root.replaceChildren();
+  if (!context.recap) return;
+  const section = el("section", "panel section-panel archive-recap");
+  const champion = context.recap.standings.find((row) => row.isChampion);
+  section.append(el("h2", "", champion ? `Champion · ${champion.managerName}` : "Season recap"));
+  if (champion) section.append(el("p", "section-note", champion.teamName));
+  if (champion?.championNote) section.append(el("p", "section-note", champion.championNote));
+  const details = el("details");
+  details.append(el("summary", "", "Final standings"));
+  details.append(el("p", "section-note", "Finish is ESPN's source finishing position; the championship designation includes league corrections. PF and PA below are ESPN standings totals."));
+  details.append(simpleTable(["Team / owner", "ESPN finish", "Record", "PF", "PA"], [...context.recap.standings].sort((a, b) => a.finalRank - b.finalRank).map((row) => {
+    const team = el("span");
+    team.append(el("strong", "starter-name", row.teamName), el("small", "starter-meta", row.managerName));
+    return [team, row.finalRank, recordText(row), point(row.pointsFor), point(row.pointsAgainst)];
+  }), "Archived final standings"));
+  details.append(el("p", "section-note", context.provenance?.precisionNote || ""));
+  section.append(details);
+  root.append(section);
+}
+
+export function renderOwners(payload) {
+  const root = byId("ownersContent");
+  if (payload) ownerData = payload;
+  if (!payload && ownerData) {
+    byId("ownersStatus").textContent = "Owner update unavailable; previous career data retained.";
+    return;
+  }
+  root.replaceChildren();
+  if (!payload) { root.append(emptyState("Owner careers unavailable", "Try reloading the page.")); return; }
+  byId("ownersStatus").textContent = !payload.currentDataAvailable ? "Historical careers available. Current-season contributions are unavailable." : payload.stale ? "Current-season contributions use saved data; the latest update is unavailable or overdue." : "Only finalized regular-season games count toward careers.";
+  const owner = payload.owners.find((item) => item.id === selectedOwner);
+  if (owner) {
+    const back = el("button", "refresh-button", "← All owners");
+    back.type = "button";
+    back.addEventListener("click", () => { selectedOwner = null; renderOwners(ownerData); byId("ownersContent").querySelector("button")?.focus(); });
+    const heading = el("h3", "owner-title", owner.name);
+    heading.tabIndex = -1;
+    root.append(back, heading);
+    root.append(simpleTable(["Seasons", "Record", "Win %", "PF", "Points/game", "Titles"], [[owner.seasonsPlayed, recordText(owner), percentage(owner.winPct), point(owner.pointsFor), point(owner.pointsPerGame), owner.championships]], "Career totals"));
+    root.append(simpleTable(["Season", "Team", "Record", "PF", "Points/game", "Champion"], owner.seasons.map((row) => {
+      const link = el("a", "season-link", `${row.season}${row.ongoing ? " · Ongoing" : ""}`);
+      link.href = `?season=${encodeURIComponent(row.season)}&owner=${encodeURIComponent(owner.id)}`;
+      link.addEventListener("click", (event) => { if (event.button || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return; event.preventDefault(); seasonHandler(row.season, owner.id); });
+      return [link, row.teamName, recordText(row), point(row.pointsFor), point(row.games ? row.pointsFor / row.games : null), row.champion ? "Yes" : "—"];
+    }), "Owner season history"));
+  } else {
+    const filtered = payload.owners.filter((item) => !byId("currentOwnersOnly").checked || item.current);
+    root.append(simpleTable(["Owner", "Seasons", "Record", "Win %", "PF", "Points/game", "Titles"], filtered.map((item) => {
+      const button = el("button", "owner-button", `${item.name}${item.current ? "" : " · Former"}`);
+      button.type = "button";
+      button.addEventListener("click", () => { selectedOwner = item.id; renderOwners(ownerData); byId("ownersContent").querySelector("h3")?.focus(); });
+      return [button, item.seasonsPlayed, recordText(item), percentage(item.winPct), point(item.pointsFor), point(item.pointsPerGame), item.championships];
+    }), "Owner career summaries"));
+  }
 }
 
 export function renderConnectionWarning() {

@@ -4,8 +4,8 @@ services:
     runtime: node
     plan: starter
     numInstances: 1
-    rootDir: sleeper
-    buildCommand: npm ci && npm test
+    rootDir: .
+    buildCommand: npm ci --include=dev && npm test
     startCommand: npm start
     healthCheckPath: /healthz
     disk:
