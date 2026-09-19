@@ -1,0 +1,10 @@
+- live weeks should not have conditional formatting
+- expand the matrix view such that it is all visible on a browser page
+- add conditional formatting to the owners page
+- on the owner career page, add an option for the '10 team era', including seasons with 10 teams only (23-current)
+- add more statistics to the owners page as possible without overcrowding it 
+- add sort ability to owner page
+- remove 'Red to green = lower to higher scores across the season, including live scores. ▴ Above that week’s median.' section
+- remove 'Regular-season results across all seasons. Scoring spans different league formats and is not normalized across eras.'
+- remove 'Manual True League title correction: 2022 title awarded to DJ, Moore Bas‎s! instead of ESPN final-rank #1 Sword D*ck.'
+- show all ownerships on trends page, and clarify it tracks cumulative median performance

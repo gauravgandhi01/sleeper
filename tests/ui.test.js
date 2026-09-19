@@ -45,8 +45,10 @@ test("season UI: archive recap, owner profiles, links, visible-tab keyboard navi
   assert.equal(doc.activeElement.id, "ownersTab");
   const mode = [...doc.querySelectorAll("#matrixControls button")].find((button) => button.textContent.includes("Rank"));
   mode.click();
-  const chosen = [...doc.querySelectorAll("#trendControls input:checked")].map((input) => input.parentElement.textContent);
-  const ownerIds = payload.stats.teams.filter((team) => chosen.includes(team.managerName)).flatMap((team) => team.canonicalOwnerIds);
+  assert.equal(doc.querySelectorAll("#trendControls input").length, 0);
+  assert.equal(doc.querySelectorAll("#trendChart .chart-line").length, 10);
+  const originalLine = doc.querySelector('#trendChart [data-owner="gaurav"]');
+  const originalStyle = [originalLine.getAttribute("stroke"), originalLine.getAttribute("stroke-dasharray")];
   const past = archive.dashboard("2018");
   ui.prepareSeason("2018", true, "gaurav");
   ui.renderDashboard(past.stats, past);
@@ -54,8 +56,10 @@ test("season UI: archive recap, owner profiles, links, visible-tab keyboard navi
   assert.equal(doc.querySelectorAll("#matrixTable tbody tr").length, 12);
   assert.match(doc.querySelector("#matrixTable .owner-highlight").textContent, /Gaurav/);
   assert.match(doc.querySelector("#matrixTable caption").textContent, /rank/);
-  const selectedNames = [...doc.querySelectorAll("#trendControls input:checked")].map((input) => input.parentElement.textContent);
-  assert.deepEqual(past.stats.teams.filter((team) => selectedNames.includes(team.managerName)).flatMap((team) => team.canonicalOwnerIds).sort(), ownerIds.sort());
+  assert.equal(doc.querySelectorAll("#trendChart .chart-line").length, 12);
+  assert.equal(doc.querySelectorAll("#trendControls .trend-owner-key").length, 12);
+  const oldLine = doc.querySelector('#trendChart [data-owner="gaurav"]');
+  assert.deepEqual([oldLine.getAttribute("stroke"), oldLine.getAttribute("stroke-dasharray")], originalStyle);
   ui.renderOwners(archive.careers(null, { currentSeason: "2026" }));
   assert.equal(doc.querySelectorAll("#ownersContent tbody tr").length, 14);
   const filter = doc.getElementById("currentOwnersOnly");
@@ -131,7 +135,8 @@ test("initial archive deep link loads highlighted owner without refreshing Sleep
   assert.equal(calls.includes("/api/refresh"), false);
   assert.equal(doc.getElementById("seasonSelect").value, "2022");
   assert.match(doc.querySelector(".owner-highlight").textContent, /Gaurav/);
-  assert.match(doc.getElementById("seasonRecap").textContent, /Manual True League title correction/);
+  assert.doesNotMatch(doc.getElementById("seasonRecap").textContent, /Manual True League title correction/);
+  assert.match(doc.getElementById("seasonRecap").textContent, /Champion · Gaurav Gandhi/);
   assert.match(doc.getElementById("ownersStatus").textContent, /Current-season contributions are unavailable/);
 });
 
@@ -159,4 +164,99 @@ test("trend sums weekly score-minus-median with full precision and excludes prov
   payload.stats.weeks = [];
   ui.renderDashboard(payload.stats, payload);
   assert.match(doc.getElementById("trendChart").textContent, /No finalized trends yet/);
+});
+
+test("live matrix cells have no heat or median marker and do not rescale finalized cells", async (t) => {
+  const doc = environment(t);
+  const ui = await import(`../src/ui.js?matrix=${Date.now()}`);
+  ui.initializeUi({ onRefresh() {} });
+  const payload = archive.dashboard("2025");
+  payload.stats.weeks = payload.stats.weeks.slice(0, 1);
+  ui.renderDashboard(payload.stats, payload);
+  const shades = [...doc.querySelectorAll("#matrixTable .matrix-scored")].map((cell) => cell.getAttribute("style"));
+  payload.stats.liveWeek = { ...structuredClone(payload.stats.weeks[0]), week: 2, status: "live" };
+  payload.stats.liveWeek.entries.forEach((entry) => { entry.score = 99999; });
+  ui.renderDashboard(payload.stats, payload);
+  assert.deepEqual([...doc.querySelectorAll("#matrixTable .matrix-scored")].map((cell) => cell.getAttribute("style")), shades);
+  assert.equal(doc.querySelectorAll("#matrixTable .matrix-live-cell.matrix-scored, #matrixTable .matrix-live-cell .matrix-median-marker").length, 0);
+  assert.match(doc.querySelector(".matrix-live-head").textContent, /Live/);
+  assert.doesNotMatch(doc.body.textContent, /Red to green =|Regular-season results across all seasons/);
+});
+
+test("owner sorting, era profiles, conditional colors and matching-cache fallback", async (t) => {
+  const doc = environment(t);
+  const ui = await import(`../src/ui.js?owners=${Date.now()}`);
+  ui.initializeUi({ onRefresh() {} });
+  const all = archive.careers(null);
+  const ten = archive.careers(null, { era: "ten-team" });
+  ui.renderOwners(all);
+  const header = (label) => [...doc.querySelectorAll("#ownersContent thead button")].find((button) => button.textContent.replace(/[↑↓]/g, "").trim() === label);
+  header("PF").click();
+  assert.match(doc.querySelector("#ownersContent .owner-button").textContent, new RegExp([...all.owners].sort((a, b) => b.pointsFor - a.pointsFor)[0].name));
+  assert.equal(doc.activeElement, header("PF"));
+  assert.equal(doc.querySelectorAll('#ownersContent th[aria-sort="descending"]').length, 1);
+  assert.equal(doc.querySelector("#ownersContent tbody th").classList.contains("career-colored"), false);
+  assert.ok(doc.querySelectorAll("#ownersContent .career-colored").length > 0);
+  const kyle = [...doc.querySelectorAll(".owner-button")].find((button) => button.textContent.includes("Kyle"));
+  kyle.click();
+  ui.prepareOwnerEra("ten-team");
+  assert.doesNotMatch(doc.getElementById("ownersContent").textContent, /Kyle/);
+  ui.renderOwners(ten);
+  assert.match(doc.getElementById("ownersContent").textContent, /No seasons in this era/);
+  ui.prepareOwnerEra("all");
+  ui.renderOwners(all);
+  assert.match(doc.querySelector("#ownersContent h3").textContent, /Kyle/);
+  assert.ok(doc.querySelector(".career-performance"));
+  header("Season").click();
+  const seasonLink = () => doc.querySelector("#ownersContent a").textContent;
+  assert.equal(seasonLink(), "2018");
+  ui.renderOwners(all);
+  assert.equal(seasonLink(), "2018");
+  doc.getElementById("currentOwnersOnly").checked = true;
+  doc.getElementById("currentOwnersOnly").dispatchEvent(new window.Event("change"));
+  assert.match(doc.querySelector("#ownersContent h3").textContent, /Kyle/);
+  ui.prepareOwnerEra("ten-team");
+  ui.renderOwners(null);
+  assert.match(doc.getElementById("ownersStatus").textContent, /previous data for this era retained/);
+  assert.match(doc.getElementById("ownersContent").textContent, /No seasons in this era/);
+  doc.querySelector("#ownersContent .refresh-button").click();
+  assert.equal(doc.querySelectorAll("#ownersContent tbody tr").length, 10);
+  assert.ok([...doc.querySelectorAll("#ownersContent tbody tr")].every((row) => !row.textContent.includes("Kyle")));
+  const neutral = structuredClone(ten);
+  neutral.owners.forEach((owner) => { owner.pointsFor = 100; owner.winPct = 0.5; owner.averageDeltaMedian = 0; });
+  ui.renderOwners(neutral);
+  const first = doc.querySelector("#ownersContent tbody tr");
+  for (const index of [3, 4, 7]) assert.equal(first.children[index].style.getPropertyValue("--score-shade"), "0.00%");
+});
+
+test("era switching ignores late responses and never presents all-era totals as ten-team", async (t) => {
+  const doc = environment(t, "http://localhost/?season=2025");
+  const oldFetch = globalThis.fetch;
+  t.after(() => { globalThis.fetch = oldFetch; });
+  let resolveTen;
+  let failTen = false;
+  const response = (body) => ({ ok: true, json: async () => body });
+  globalThis.fetch = async (url) => {
+    if (url === "/api/seasons") return response(catalog);
+    if (url === "/api/owners") return response(archive.careers(null));
+    if (url === "/api/owners?era=ten-team") {
+      if (failTen) throw new Error("offline");
+      return new Promise((resolve) => { resolveTen = () => resolve(response(archive.careers(null, { era: "ten-team" }))); });
+    }
+    return response(archive.dashboard("2025"));
+  };
+  const source = (await readFile(new URL("../src/app.js", import.meta.url), "utf8")).replace('"./ui.js"', JSON.stringify(`${new URL("../src/ui.js", import.meta.url).href}?eraRace=${Date.now()}`));
+  await import(`data:text/javascript;base64,${Buffer.from(source).toString("base64")}`);
+  await flush();
+  const change = (value) => { doc.getElementById("ownerEra").value = value; doc.getElementById("ownerEra").dispatchEvent(new window.Event("change")); };
+  change("ten-team");
+  assert.equal(doc.querySelectorAll("#ownersContent tbody tr").length, 0);
+  change("all"); await flush();
+  resolveTen(); await flush();
+  assert.equal(doc.querySelectorAll("#ownersContent tbody tr").length, 14);
+  assert.equal(doc.getElementById("ownerEra").value, "all");
+  failTen = true;
+  change("ten-team"); await flush();
+  assert.equal(doc.querySelectorAll("#ownersContent tbody tr").length, 0);
+  assert.match(doc.getElementById("ownersContent").textContent, /unavailable/);
 });

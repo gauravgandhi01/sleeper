@@ -79,7 +79,6 @@
           <div>
             <p id="seasonRange" class="eyebrow accent">Regular season · Weeks 1–14</p>
             <h1 id="matrixTitle">Weekly scoring matrix</h1>
-            <p class="section-note">Red to green = lower to higher scores across the season, including live scores. ▴ Above that week’s median.</p>
           </div>
           <div id="matrixControls" class="segmented-control" aria-label="Performance matrix metric"></div>
         </div>
@@ -91,9 +90,15 @@
       <section class="panel section-panel">
         <div class="section-heading compact">
           <h2>Owner careers</h2>
+          <label class="theme-control">Era
+            <select id="ownerEra" aria-label="Career era">
+              <option value="all">All seasons</option>
+              <option value="ten-team">10-team era</option>
+            </select>
+          </label>
           <label><input id="currentOwnersOnly" type="checkbox"> Current owners only</label>
         </div>
-        <p class="section-note">Regular-season results across all seasons. Scoring spans different league formats and is not normalized across eras.</p>
+        <p id="ownerEraSummary" class="section-note"></p>
         <div id="ownersStatus" role="status"></div>
         <div id="ownersContent"></div>
       </section>
@@ -115,7 +120,7 @@
             <p class="eyebrow accent">Season scoring progression</p>
             <h2 id="trendTitle">Cumulative score vs median</h2>
           </div>
-          <div id="trendControls" class="team-filter" aria-label="Owners shown on chart"></div>
+          <div id="trendControls" class="trend-owner-legend" aria-label="Owner line legend"></div>
         </div>
         <div id="trendChart"></div>
       </section>

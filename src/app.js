@@ -1,4 +1,4 @@
-import { initializeUi, renderDashboard, renderError, renderLoading, setRefreshState, renderConnectionWarning, renderSeasons, renderOwners, prepareSeason } from "./ui.js";
+import { initializeUi, renderDashboard, renderError, renderLoading, setRefreshState, renderConnectionWarning, renderSeasons, renderOwners, prepareSeason, prepareOwnerEra } from "./ui.js";
 
 let catalog = null;
 let selectedSeason = new URL(location.href).searchParams.get("season");
@@ -7,6 +7,7 @@ let pendingRefresh = false;
 let hasData = false;
 let displayedSeason = null;
 let ownersVersion = 0;
+let ownerEra = "all";
 
 async function json(url, options = {}) {
   const response = await fetch(url, { cache: "no-store", signal: AbortSignal.timeout(60000), ...options });
@@ -17,7 +18,7 @@ async function json(url, options = {}) {
 
 async function loadOwners() {
   const version = ++ownersVersion;
-  try { const payload = await json("/api/owners"); if (version === ownersVersion) renderOwners(payload); }
+  try { const payload = await json(ownerEra === "all" ? "/api/owners" : `/api/owners?era=${ownerEra}`); if (version === ownersVersion) renderOwners(payload); }
   catch { if (version === ownersVersion) renderOwners(null); }
 }
 
@@ -59,7 +60,11 @@ async function selectSeason(year, ownerId = null, updateUrl = true) {
   if (year === selectedSeason && year === catalog?.currentSeason) void requestDashboard(true);
 }
 
-initializeUi({ onRefresh: () => requestDashboard(true), onSeasonChange: selectSeason });
+initializeUi({ onRefresh: () => requestDashboard(true), onSeasonChange: selectSeason, onOwnerEraChange: (era) => {
+  ownerEra = era;
+  prepareOwnerEra(era);
+  void loadOwners();
+} });
 renderLoading();
 try {
   catalog = await json("/api/seasons");

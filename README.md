@@ -142,6 +142,36 @@ Points/game is weighted by scored weeks, not an average of season averages.
 The current season never acquires a championship based on regular-season rank.
 Historical scoring spans different formats and is not normalized across eras.
 
+Owners includes an All seasons / 10-team era selector. Eligibility uses actual
+season team counts (currently 2023 onward), independently of the main season
+selector and Current owners only filter. All totals, titles, profile metrics,
+and season rows respect the selected era. Owners without a qualifying season
+are omitted from the list; an already-open profile shows an empty state instead.
+Era, filters, sort order and selected profile persist during this page session.
+
+Owner tables support column sorting (Record sorts by win percentage), with
+missing values last. Median win percentage credits half a win for median ties;
+average versus median divides the sum of weekly score-minus-median by scored
+weeks. Profile consistency is sample deviation across all qualifying scores,
+not the average of yearly deviations. It is unavailable with fewer than two
+scores. Profiles also show median record, cumulative versus median and best/worst
+weeks. Header help describes metrics and color comparisons.
+
+Career colors use muted red/green, neutral at 50% for percentages and zero for
+versus-median metrics. Other colored table columns scale across displayed rows;
+identical values remain neutral. Profile summaries compare against owners in the
+selected era; lower deviation indicates more consistency. Identity, season counts,
+and records are not colored.
+
+The scoring matrix colors finalized weeks only and excludes live weeks from its
+color scale and above-median markers. Desktop layouts at 1280px and wider use a
+full-width, compact matrix; smaller viewports retain horizontal scrolling.
+Trends always shows all ownerships in the selected season, with stable owner
+colors/line styles and a noninteractive legend. It tracks the cumulative sum of
+score minus each week's league median, with a zero baseline and no live scores.
+The visible 2022 manual correction sentence is omitted, but its provenance and
+corrected championship remain preserved in the archive and API.
+
 `server/identities.js` explicitly links ESPN manager keys to stable canonical
 IDs and Sleeper user IDs. Display names and team names are never used as runtime
 identity joins. Daniel Pyo / Ethan Miller (former), present in 2018–2020, remains
@@ -154,8 +184,11 @@ Additional API behavior (all responses remain `no-store`):
 - `GET /api/dashboard?season=YYYY`: selected season; an unavailable year returns
   404. Archive responses include `source`, `provenance`, and `recap`, with no live
   matchups or draft board. Omission preserves the current-season response.
-- `GET /api/owners`: career totals and season rows, plus current-data availability
-  and staleness. Historical results work even during a cold Sleeper outage.
+- `GET /api/owners?era=all|ten-team`: career totals and season rows, plus applied
+  era, qualifying seasons/team counts, current-data availability and staleness.
+  Omitting era defaults to all; invalid values return 400. Historical results
+  work even during a cold Sleeper outage. Failed updates retain data only for the
+  matching era, and late responses cannot overwrite a newly selected era.
 - `POST /api/refresh`: always refreshes only the current Sleeper season.
 
 To regenerate from the original dashboard locally, run from this directory:

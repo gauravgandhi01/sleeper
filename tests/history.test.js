@@ -105,12 +105,56 @@ test("archive and careers remain available on cold Sleeper failure; assets stay 
   assert.equal(payload.currentWeekMatchups, null);
   assert.equal(calls, 0);
   const careers = await (await get("/api/owners")).json();
+  assert.equal(careers.era, "all");
+  assert.equal((await get("/api/owners?era=invalid")).status, 400);
+  assert.equal((await get("/api/owners?era=all&era=ten-team")).status, 400);
+  const era = await (await get("/api/owners?era=ten-team")).json();
+  assert.deepEqual(era.qualifyingSeasons.map((item) => item.season), ["2025", "2024", "2023"]);
   assert.equal(careers.owners.length, 14);
   assert.equal(careers.currentDataAvailable, false);
   for (const path of ["/api/dashboard?season=2000", "/api/dashboard?season=../index", "/api/dashboard?season=2025&season=2024", "/data/history.json", "/server/identities.js", "/scripts/import-history.mjs"]) assert.equal((await get(path)).status, 404);
   assert.equal((await get("/api/dashboard")).status, 503);
   assert.equal((await fetch(`${base}/api/refresh?season=2025`, { method: "POST" })).status, 503);
   assert.equal(calls, 2);
+});
+
+test("career era uses actual team counts and recomputes median metrics and pooled deviation", () => {
+  const all = history.careers(null);
+  const ten = history.careers(null, { era: "ten-team" });
+  assert.equal(ten.owners.filter((owner) => owner.seasons.length).length, 10);
+  assert.equal(ten.owners.find((owner) => owner.id === "pyo-ethan-former").seasons.length, 0);
+  assert.ok(all.owners.find((owner) => owner.id === "gaurav").championships > ten.owners.find((owner) => owner.id === "gaurav").championships);
+  for (const owner of ten.owners.filter((owner) => owner.seasons.length)) {
+    assert.ok(owner.seasons.every((season) => season.teamCount === 10 && Number(season.season) >= 2023));
+    assert.equal(owner.seasonsPlayed, 3);
+    assert.equal(owner.games, 42);
+    assert.equal(owner.medianWins + owner.medianLosses + owner.medianTies, 42);
+    assert.equal(owner.medianWinPct, (owner.medianWins + owner.medianTies / 2) / 42);
+    assert.equal(owner.averageDeltaMedian, owner.cumulativeDeltaMedian / 42);
+    const scores = archive.seasons.filter((season) => season.snapshot.metadata.teamCount === 10).flatMap(({ snapshot }) => {
+      const roster = snapshot.teams.find((team) => team.canonicalOwnerIds.includes(owner.id));
+      return snapshot.completedWeeks.map((week) => week.entries.find((entry) => entry.rosterId === roster.rosterId).score);
+    });
+    const mean = scores.reduce((a, b) => a + b) / scores.length;
+    const deviation = Math.sqrt(scores.reduce((sum, score) => sum + (score - mean) ** 2, 0) / (scores.length - 1));
+    assert.ok(Math.abs(owner.scoreDeviation - deviation) < 1e-10);
+    assert.equal(owner.bestScore, Math.max(...scores));
+    assert.equal(owner.worstScore, Math.min(...scores));
+  }
+  // A future year with twelve teams is not part of the ten-team era.
+  const twelve = structuredClone(archive.seasons[0].snapshot);
+  twelve.metadata.season = "2027";
+  twelve.metadata.source = "sleeper";
+  assert.equal(history.careers(twelve, { era: "ten-team" }).qualifyingSeasons.length, 3);
+  const current = { metadata: { season: "2026", teamCount: 10 }, teams: [{ rosterId: 1, canonicalOwnerIds: ["new-owner"], managerName: "New owner" }, { rosterId: 2, canonicalOwnerIds: ["opponent"], managerName: "Opponent" }], completedWeeks: [{ entries: [{ rosterId: 1, matchupId: 1, score: 0 }, { rosterId: 2, matchupId: 1, score: 0 }] }] };
+  const one = history.careers(current, { era: "ten-team" }).owners.find((owner) => owner.id === "new-owner");
+  assert.equal(one.medianWinPct, 0.5);
+  assert.equal(one.averageDeltaMedian, 0);
+  assert.equal(one.scoreDeviation, null);
+  current.completedWeeks.push({ entries: [{ rosterId: 1, matchupId: 1, score: -10 }, { rosterId: 2, matchupId: 1, score: 10 }] });
+  const two = history.careers(current, { era: "ten-team" }).owners.find((owner) => owner.id === "new-owner");
+  assert.equal(two.averageDeltaMedian, -5);
+  assert.equal(two.medianWinPct, 0.25);
 });
 
 test("offline importer exactly reproduces checked-in archive when source is present", async (t) => {

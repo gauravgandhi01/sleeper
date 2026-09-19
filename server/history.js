@@ -1,16 +1,21 @@
 import { readFile } from "node:fs/promises";
-import { calculateStats } from "../src/stats.js";
+import { calculateStats, median, sampleStandardDeviation } from "../src/stats.js";
 import { validateSnapshot } from "./store.js";
 import { owners } from "./identities.js";
 
 export function seasonRecords(snapshot) {
-  const rows = new Map(snapshot.teams.map((team) => [team.rosterId, { rosterId: team.rosterId, teamName: team.teamName, canonicalOwnerIds: team.canonicalOwnerIds || [], games: 0, wins: 0, losses: 0, ties: 0, pointsFor: 0, pointsAgainst: 0 }]));
+  const rows = new Map(snapshot.teams.map((team) => [team.rosterId, { rosterId: team.rosterId, teamName: team.teamName, canonicalOwnerIds: team.canonicalOwnerIds || [], games: 0, wins: 0, losses: 0, ties: 0, pointsFor: 0, pointsAgainst: 0, medianWins: 0, medianLosses: 0, medianTies: 0, cumulativeDeltaMedian: 0, scoreValues: [] }]));
   for (const week of snapshot.completedWeeks) {
+    const leagueMedian = median(week.entries.map((entry) => entry.score));
     const pairs = new Map();
     for (const entry of week.entries) {
       const row = rows.get(entry.rosterId);
       row.games++;
       row.pointsFor += entry.score;
+      row.scoreValues.push(entry.score);
+      const delta = entry.score - leagueMedian;
+      row.cumulativeDeltaMedian += delta;
+      row[delta > 0 ? "medianWins" : delta < 0 ? "medianLosses" : "medianTies"]++;
       if (entry.matchupId != null) pairs.set(entry.matchupId, [...(pairs.get(entry.matchupId) || []), entry]);
     }
     for (const pair of pairs.values()) {
@@ -24,7 +29,18 @@ export function seasonRecords(snapshot) {
       });
     }
   }
-  return [...rows.values()];
+  return [...rows.values()].map((row) => ({ ...row, ...careerMetrics(row) }));
+}
+
+function careerMetrics(row) {
+  const decisions = row.wins + row.losses + row.ties;
+  return { winPct: decisions ? (row.wins + row.ties / 2) / decisions : null,
+    pointsPerGame: row.games ? row.pointsFor / row.games : null,
+    medianWinPct: row.games ? (row.medianWins + row.medianTies / 2) / row.games : null,
+    averageDeltaMedian: row.games ? row.cumulativeDeltaMedian / row.games : null,
+    bestScore: row.scoreValues.length ? Math.max(...row.scoreValues) : null,
+    worstScore: row.scoreValues.length ? Math.min(...row.scoreValues) : null,
+    scoreDeviation: sampleStandardDeviation(row.scoreValues) };
 }
 
 export function validateArchive(archive) {
@@ -72,30 +88,34 @@ export class History {
   seasons(currentSeason) {
     return { currentSeason: String(currentSeason), seasons: [{ season: String(currentSeason), source: "sleeper", current: true }, ...this.archive.seasons.map(({ snapshot }) => ({ season: snapshot.metadata.season, source: "espn", current: false }))].sort((a, b) => Number(b.season) - Number(a.season)) };
   }
-  careers(currentSnapshot, { currentSeason, stale = false } = {}) {
+  careers(currentSnapshot, { currentSeason, stale = false, era = "all" } = {}) {
+    if (!["all", "ten-team"].includes(era)) throw new Error("Invalid career era");
     const known = new Map(owners.map((owner) => [owner.id, { id: owner.id, name: owner.name, current: currentSnapshot ? currentSnapshot.teams.some((team) => team.canonicalOwnerIds?.includes(owner.id)) : Boolean(owner.sleeperId), seasons: [] }]));
     const seasons = [...this.archive.seasons];
     if (currentSnapshot) seasons.push({ snapshot: currentSnapshot, recap: { standings: [] } });
-    for (const { snapshot, recap } of seasons) {
+    const eligible = seasons.filter(({ snapshot }) => era === "all" || snapshot.metadata.teamCount === 10);
+    for (const { snapshot, recap } of eligible) {
       for (const row of seasonRecords(snapshot)) {
         for (const ownerId of row.canonicalOwnerIds) {
           if (!known.has(ownerId)) known.set(ownerId, { id: ownerId, name: snapshot.teams.find((team) => team.rosterId === row.rosterId).managerName, current: true, seasons: [] });
-          known.get(ownerId).seasons.push({ ...row, season: snapshot.metadata.season, ongoing: snapshot.metadata.source !== "espn" && snapshot.metadata.status !== "complete", champion: recap.standings.some((standing) => standing.rosterId === row.rosterId && standing.isChampion) });
+          known.get(ownerId).seasons.push({ ...row, teamCount: snapshot.metadata.teamCount, season: snapshot.metadata.season, ongoing: snapshot.metadata.source !== "espn" && snapshot.metadata.status !== "complete", champion: recap.standings.some((standing) => standing.rosterId === row.rosterId && standing.isChampion) });
         }
       }
     }
-    return { schemaVersion: 1, currentSeason: String(currentSeason), currentDataAvailable: Boolean(currentSnapshot), stale,
+    return { schemaVersion: 1, era, qualifyingSeasons: eligible.map(({ snapshot }) => ({ season: snapshot.metadata.season, teamCount: snapshot.metadata.teamCount })).sort((a, b) => Number(b.season) - Number(a.season)), currentSeason: String(currentSeason), currentDataAvailable: Boolean(currentSnapshot), stale,
       owners: [...known.values()].map((owner) => {
-        const total = { seasonsPlayed: 0, games: 0, wins: 0, losses: 0, ties: 0, pointsFor: 0, championships: 0 };
+        const total = { seasonsPlayed: 0, games: 0, wins: 0, losses: 0, ties: 0, pointsFor: 0, championships: 0, medianWins: 0, medianLosses: 0, medianTies: 0, cumulativeDeltaMedian: 0, scoreValues: [] };
         const years = new Set();
         for (const row of owner.seasons) {
           if (row.games) years.add(row.season);
-          for (const key of ["games", "wins", "losses", "ties", "pointsFor"]) total[key] += row[key];
+          for (const key of ["games", "wins", "losses", "ties", "pointsFor", "medianWins", "medianLosses", "medianTies", "cumulativeDeltaMedian"]) total[key] += row[key];
+          total.scoreValues.push(...row.scoreValues);
           if (row.champion) total.championships++;
         }
         total.seasonsPlayed = years.size;
-        const decisions = total.wins + total.losses + total.ties;
-        return { ...owner, seasons: owner.seasons.sort((a, b) => Number(b.season) - Number(a.season)), ...total, winPct: decisions ? (total.wins + total.ties / 2) / decisions : null, pointsPerGame: total.games ? total.pointsFor / total.games : null };
+        const metrics = careerMetrics(total);
+        const { scoreValues, ...summary } = total;
+        return { ...owner, seasons: owner.seasons.sort((a, b) => Number(b.season) - Number(a.season)).map(({ scoreValues, ...row }) => row), ...summary, ...metrics };
       }).sort((a, b) => a.name.localeCompare(b.name)) };
   }
 }

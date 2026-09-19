@@ -35,7 +35,11 @@ export async function createApp({ service, publicBaseUrl = "http://localhost:417
     res.json({ ...value, source: "sleeper" });
   };
   app.get("/api/seasons", (req, res) => res.json(history.seasons(service.saved?.snapshot.metadata.season || currentSeason)));
-  app.get("/api/owners", (req, res) => res.json(history.careers(service.saved ? linkCurrentOwners(applyDisplayNames(service.saved.snapshot)) : null, { currentSeason: service.saved?.snapshot.metadata.season || currentSeason, stale: service.dashboard()?.stale ?? true })));
+  app.get("/api/owners", (req, res) => {
+    const era = req.query.era ?? "all";
+    if (!["all", "ten-team"].includes(era)) return res.status(400).json({ error: "Era must be all or ten-team." });
+    res.json(history.careers(service.saved ? linkCurrentOwners(applyDisplayNames(service.saved.snapshot)) : null, { era, currentSeason: service.saved?.snapshot.metadata.season || currentSeason, stale: service.dashboard()?.stale ?? true }));
+  });
   app.get("/api/dashboard", sendDashboard);
   app.post("/api/refresh", sendDashboard);
   app.get("/healthz", async (req, res) => {
