@@ -414,7 +414,7 @@ test("owner sorting, era profiles, conditional colors and matching-cache fallbac
   neutral.owners.forEach((owner) => { owner.pointsFor = 100; owner.winPct = 0.5; owner.averageDeltaMedian = 0; });
   ui.renderOwners(neutral);
   const first = doc.querySelector("#ownersContent tbody tr");
-  for (const index of [3, 4, 7]) assert.equal(first.children[index].style.getPropertyValue("--score-shade"), "0.00%");
+  for (const index of [3, 4, 9]) assert.equal(first.children[index].style.getPropertyValue("--score-shade"), "0.00%");
 });
 
 test("era switching ignores late responses and never presents all-era totals as ten-team", async (t) => {

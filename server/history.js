@@ -36,6 +36,8 @@ function careerMetrics(row) {
   const decisions = row.wins + row.losses + row.ties;
   return { winPct: decisions ? (row.wins + row.ties / 2) / decisions : null,
     pointsPerGame: row.games ? row.pointsFor / row.games : null,
+    pointsAgainstPerGame: row.games ? row.pointsAgainst / row.games : null,
+    pointDifferentialPerGame: row.games ? (row.pointsFor - row.pointsAgainst) / row.games : null,
     medianWinPct: row.games ? (row.medianWins + row.medianTies / 2) / row.games : null,
     averageDeltaMedian: row.games ? row.cumulativeDeltaMedian / row.games : null,
     bestScore: row.scoreValues.length ? Math.max(...row.scoreValues) : null,
@@ -123,11 +125,11 @@ export class History {
     }
     return { schemaVersion: 1, era, qualifyingSeasons: eligible.map(({ snapshot }) => ({ season: snapshot.metadata.season, teamCount: snapshot.metadata.teamCount })).sort((a, b) => Number(b.season) - Number(a.season)), currentSeason: String(currentSeason), currentDataAvailable: Boolean(currentSnapshot), stale,
       owners: [...known.values()].map((owner) => {
-        const total = { seasonsPlayed: 0, games: 0, wins: 0, losses: 0, ties: 0, pointsFor: 0, championships: 0, postseasonAppearances: 0, medianWins: 0, medianLosses: 0, medianTies: 0, cumulativeDeltaMedian: 0, scoreValues: [] };
+        const total = { seasonsPlayed: 0, games: 0, wins: 0, losses: 0, ties: 0, pointsFor: 0, pointsAgainst: 0, championships: 0, postseasonAppearances: 0, medianWins: 0, medianLosses: 0, medianTies: 0, cumulativeDeltaMedian: 0, scoreValues: [] };
         const years = new Set();
         for (const row of owner.seasons) {
           if (row.games) years.add(row.season);
-          for (const key of ["games", "wins", "losses", "ties", "pointsFor", "medianWins", "medianLosses", "medianTies", "cumulativeDeltaMedian"]) total[key] += row[key];
+          for (const key of ["games", "wins", "losses", "ties", "pointsFor", "pointsAgainst", "medianWins", "medianLosses", "medianTies", "cumulativeDeltaMedian"]) total[key] += row[key];
           total.scoreValues.push(...row.scoreValues);
           if (row.champion) total.championships++;
           if (row.postseasonAppearance) total.postseasonAppearances++;

@@ -1094,9 +1094,13 @@ function careerColumns(qualifyingSeasons = []) {
     { label: "Record", key: "winPct", render: recordText, help: "Regular-season head-to-head record; sorted by win percentage." },
     { label: "Win %", key: "winPct", format: percentage, color: "percent", help: "Wins plus half of ties divided by decided games; neutral at 50%." },
     { label: "PF", key: "pointsFor", format: point, color: "range", help: "Total points across qualifying finalized weeks; colors compare displayed rows." },
-    { label: "Points/game", key: "pointsPerGame", format: point, color: "range", help: "Total points divided by scored weeks, not an average of season averages." },
+    { label: "PF/G", key: "pointsPerGame", format: point, color: "range", help: "Total points divided by scored weeks, not an average of season averages." },
+    { label: "PA/G", key: "pointsAgainstPerGame", format: point, color: "inverse", help: "Opponent points per finalized regular-season game; lower is better." },
+    { label: "Diff/G", key: "pointDifferentialPerGame", format: signed, color: "zero", help: "Average point differential per finalized regular-season game." },
     { label: "Median win %", key: "medianWinPct", format: percentage, color: "percent", help: "Weeks above median plus half of median ties divided by finalized weeks; neutral at 50%." },
     { label: "Avg vs median", key: "averageDeltaMedian", format: signed, color: "zero", help: "Mean score minus that week's median; neutral at zero." },
+    { label: "Best", key: "bestScore", format: point, color: "range", help: "Highest qualifying weekly score." },
+    { label: "Score SD", key: "scoreDeviation", format: point, color: "inverse", help: "Sample standard deviation of qualifying weekly scores. Lower means more consistent scoring." },
   ];
 }
 
@@ -1141,7 +1145,12 @@ export function renderOwners(payload) {
     root.append(totals);
     const cards = el("div", "career-performance");
     const metrics = [
+      { label: "Playoff apps", key: "postseasonAppearances", format: integer, color: "range", help: "Confirmed championship-bracket appearances in qualifying seasons." },
+      { label: "Win rate", key: "winPct", format: percentage, color: "percent", help: "Wins plus half of ties divided by decided games." },
       { label: "Median record", key: "medianWins", rankKey: "medianWinPct", render: (row) => `${row.medianWins}-${row.medianLosses}${row.medianTies ? `-${row.medianTies}` : ""}`, help: "Weeks above, below, and tied with the league median." },
+      { label: "Points/game", key: "pointsPerGame", format: point, color: "range", help: "Total points divided by scored weeks." },
+      { label: "Against/game", key: "pointsAgainstPerGame", format: point, color: "inverse", help: "Opponent points per finalized regular-season game; lower is better." },
+      { label: "Diff/game", key: "pointDifferentialPerGame", format: signed, color: "zero", help: "Average point differential per finalized regular-season game." },
       { label: "Cumulative vs median", key: "cumulativeDeltaMedian", format: signed, color: "zero", help: "Sum of score minus the league median for each qualifying week." },
       { label: "Best week", key: "bestScore", format: point, color: "range", help: "Highest qualifying weekly score." },
       { label: "Worst week", key: "worstScore", format: point, color: "range", help: "Lowest qualifying weekly score." },
@@ -1167,7 +1176,7 @@ export function renderOwners(payload) {
       } },
       { label: "Team", key: "teamName", format: (value) => value, help: "Team name in this season." },
       { label: "Playoffs", key: "postseasonAppearance", format: (value) => value == null ? "—" : value ? "✅" : "❌", help: "Championship-bracket participation from ESPN postseason matchups and playoff seeds; consolation games are excluded. A dash means not yet available." },
-      ...careerStats.filter((column) => !["seasonsPlayed", "championships", "postseasonAppearances"].includes(column.key)),
+      ...careerStats.filter((column) => !["postseasonAppearances"].includes(column.key)),
       { label: "Champion", key: "champion", format: (value) => value ? "Yes" : "—", help: "Explicit championship designation; ongoing seasons are not inferred." },
     ];
     root.append(careerTable(columns, owner.seasons, ownerSeasonSort, "Owner season history"));
