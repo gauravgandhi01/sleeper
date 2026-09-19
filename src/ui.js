@@ -1008,7 +1008,7 @@ export function renderOwners(payload) {
         return link;
       } },
       { label: "Team", key: "teamName", format: (value) => value, help: "Team name in this season." },
-      { label: "Playoffs", key: "postseasonAppearance", format: (value) => value == null ? "Unavailable" : value ? "Yes" : "No", help: "Championship-bracket participation from ESPN postseason matchups and playoff seeds; consolation games are excluded." },
+      { label: "Playoffs", key: "postseasonAppearance", format: (value) => value == null ? "—" : value ? "✅" : "❌", help: "Championship-bracket participation from ESPN postseason matchups and playoff seeds; consolation games are excluded. A dash means not yet available." },
       ...careerColumns().filter((column) => !["seasonsPlayed", "championships", "postseasonAppearances"].includes(column.key)),
       { label: "Champion", key: "champion", format: (value) => value ? "Yes" : "—", help: "Explicit championship designation; ongoing seasons are not inferred." },
     ];
