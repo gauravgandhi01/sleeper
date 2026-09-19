@@ -235,6 +235,22 @@ h2 { max-width: 640px; font-size: clamp(1.45rem, 3vw, 2.35rem); }
 }
 .section-heading.compact { align-items: center; }
 .section-heading h2 { font-size: clamp(1.8rem, 3.5vw, 3rem); }
+.section-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-left: auto;
+}
+.current-owner-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--muted);
+  font-size: .82rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
 .section-note { max-width: 320px; margin: 0; color: var(--muted); font-size: .9rem; }
 
 .roster-grid {
@@ -434,6 +450,12 @@ h2 { max-width: 640px; font-size: clamp(1.45rem, 3vw, 2.35rem); }
 .benchmark span, .benchmark strong { display: block; }
 .benchmark span { color: var(--muted); font-size: .75rem; font-weight: 800; text-transform: uppercase; letter-spacing: .07em; }
 .benchmark strong { margin-top: 12px; font-size: 1.8rem; letter-spacing: -.035em; }
+.benchmark .benchmark-rank {
+  margin-top: 6px;
+  color: var(--accent-soft);
+  font-size: .72rem;
+  letter-spacing: .04em;
+}
 
 
 .empty-state { padding: clamp(42px, 8vw, 90px) 24px; text-align: center; }
@@ -664,7 +686,51 @@ h2 { max-width: 640px; font-size: clamp(1.45rem, 3vw, 2.35rem); }
 .archive-recap summary { cursor: pointer; padding: 12px 0; }
 .history-table { margin-block: 12px; }
 .history-table th:first-child { text-align: left; }
+.owner-profile-header {
+  display: grid;
+  grid-template-columns: minmax(220px, auto) minmax(320px, 1fr);
+  align-items: start;
+  gap: 18px;
+  margin-bottom: 12px;
+}
+.owner-profile-title { min-width: 0; }
 .owner-title { margin: 20px 0 8px; }
+.owner-season-timeline {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 7px;
+  min-width: 0;
+  padding-top: 2px;
+}
+.owner-season-tile {
+  display: grid;
+  grid-template-rows: auto auto auto;
+  place-items: center;
+  min-width: 48px;
+  padding: 7px 8px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--panel) 84%, var(--subtle));
+}
+.owner-season-tile strong {
+  margin-top: 2px;
+  font-size: 1rem;
+  line-height: 1;
+}
+.owner-season-tile small,
+.owner-season-year {
+  color: var(--muted);
+  font-size: .63rem;
+  font-weight: 850;
+  line-height: 1.1;
+}
+.owner-season-tile small { margin-top: 3px; }
+.owner-season-tile.playoff-season { border-color: color-mix(in srgb, var(--score-high) 44%, var(--line)); }
+.owner-season-tile.champion-season {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--score-high) 18%, var(--panel));
+}
 .owner-button { border: 0; background: none; color: var(--ink); padding: 8px 0; font: inherit; text-align: left; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
 .owner-name-wrap { display: inline-flex; align-items: center; gap: 4px; flex-wrap: wrap; }
 .owner-icon { display: inline-block; width: 32px; height: 32px; flex: 0 0 auto; object-fit: contain; border-radius: 8px; border: 1px solid var(--line); margin-right: 5px; }
@@ -755,6 +821,9 @@ h2 { max-width: 640px; font-size: clamp(1.45rem, 3vw, 2.35rem); }
   .data-status { display: none; }
   .brand { gap: 8px; }
   .season-button { min-height: 36px; padding-inline: 10px; }
+  .section-actions { width: 100%; justify-content: flex-start; flex-wrap: wrap; }
+  .owner-profile-header { grid-template-columns: 1fr; }
+  .owner-season-timeline { justify-content: flex-start; }
   .rivalry-controls { grid-template-columns: 1fr; gap: 10px; }
   .rivalry-versus { min-height: auto; justify-content: start; }
 }

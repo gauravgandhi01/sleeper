@@ -47,6 +47,12 @@ function byId(id) {
   return document.getElementById(id);
 }
 
+function setEraSwitch(id, era) {
+  byId(id).querySelectorAll("button[data-era]").forEach((button) => {
+    button.setAttribute("aria-pressed", String(button.dataset.era === era));
+  });
+}
+
 function point(value, digits = 2) {
   return Number.isFinite(value) ? Number(value).toFixed(digits) : "—";
 }
@@ -714,8 +720,14 @@ export function initializeUi({ onRefresh, onSeasonChange = () => {}, onOwnerEraC
   seasonHandler = onSeasonChange;
   tabHandler = onTabChange;
   byId("recordsEra").addEventListener("change", (event) => onRecordsEraChange(event.target.value));
+  byId("recordsEraSwitch").querySelectorAll("button[data-era]").forEach((button) => {
+    button.addEventListener("click", () => onRecordsEraChange(button.dataset.era));
+  });
   const changeRivalry = (stage = rivalry.stage) => onRivalryChange({ era: byId("h2hEra").value, stage, ownerA: byId("h2hOwnerA").value, ownerB: byId("h2hOwnerB").value });
   for (const id of ["h2hEra", "h2hOwnerA", "h2hOwnerB"]) byId(id).addEventListener("change", () => changeRivalry());
+  byId("h2hEraSwitch").querySelectorAll("button[data-era]").forEach((button) => {
+    button.addEventListener("click", () => onRivalryChange({ era: button.dataset.era, stage: rivalry.stage, ownerA: byId("h2hOwnerA").value, ownerB: byId("h2hOwnerB").value }));
+  });
   byId("h2hStageControls").querySelectorAll("button").forEach((button) => button.addEventListener("click", () => changeRivalry(button.dataset.stage)));
   byId("seasonSelect").addEventListener("change", (event) => seasonHandler(event.target.value));
   byId("seasonButtons").addEventListener("click", (event) => {
@@ -958,9 +970,7 @@ function renderRecap(context) {
 export function prepareOwnerEra(era) {
   ownerEra = era;
   byId("ownerEra").value = era;
-  byId("ownerEraSwitch").querySelectorAll("button[data-era]").forEach((button) => {
-    button.setAttribute("aria-pressed", String(button.dataset.era === era));
-  });
+  setEraSwitch("ownerEraSwitch", era);
   ownerData = ownerCache.get(era) || null;
   byId("ownerEraSummary").textContent = era === "ten-team" ? "10-team seasons only" : "All seasons";
   if (ownerData) renderOwners(ownerData);
@@ -1000,6 +1010,48 @@ function playoffTimeline(owner, seasons) {
   }
   wrap.setAttribute("aria-label", [...wrap.children].map((item) => item.title).join("; "));
   return wrap;
+}
+
+function metricRank(row, rows, metric) {
+  const key = metric.rankKey || metric.key;
+  const value = row[key];
+  if (!Number.isFinite(value)) return "Unranked";
+  const values = rows.map((item) => item[key]).filter(Number.isFinite).sort((a, b) => (
+    metric.color === "inverse" ? a - b : b - a
+  ));
+  const rank = values.findIndex((candidate) => candidate === value) + 1;
+  return rank ? `#${rank} of ${values.length}` : "Unranked";
+}
+
+function seasonRange(seasons) {
+  const years = seasons.map((item) => Number(item.season)).filter(Number.isFinite).sort((a, b) => a - b);
+  if (!years.length) return "No seasons";
+  const short = (year) => `'${String(year).slice(-2)}`;
+  return years.length === 1 ? short(years[0]) : `${short(years[0])}-${short(years.at(-1))}`;
+}
+
+function seasonPointsRank(row, owners) {
+  const values = owners.flatMap((owner) => owner.seasons || [])
+    .filter((season) => season.season === row.season && Number.isFinite(season.pointsFor))
+    .map((season) => season.pointsFor)
+    .sort((a, b) => b - a);
+  const rank = values.findIndex((value) => value === row.pointsFor) + 1;
+  return rank ? `#${rank}` : "—";
+}
+
+function ownerSeasonTimeline(owner, owners) {
+  const timeline = el("div", "owner-season-timeline");
+  timeline.setAttribute("aria-label", `${owner.name} season timeline`);
+  for (const row of [...owner.seasons].sort((a, b) => Number(a.season) - Number(b.season))) {
+    const rankText = seasonPointsRank(row, owners);
+    const tile = el("span", `owner-season-tile${row.champion ? " champion-season" : row.postseasonAppearance ? " playoff-season" : ""}`);
+    const year = el("span", "owner-season-year", `'${String(row.season).slice(-2)}`);
+    const result = row.champion ? "🏆" : row.postseasonAppearance ? "✓" : row.postseasonAppearance === false ? "×" : "—";
+    tile.append(year, el("strong", "", result), el("small", "", `PF ${rankText}`));
+    tile.title = `${row.season}: ${row.teamName} · ${recordText(row)} · PF ${point(row.pointsFor)} (${rankText})${row.champion ? " · Champion" : row.postseasonAppearance ? " · Playoffs" : row.postseasonAppearance === false ? " · Missed playoffs" : ""}`;
+    timeline.append(tile);
+  }
+  return timeline;
 }
 
 function careerTable(columns, rows, sort, captionText) {
@@ -1058,8 +1110,8 @@ export function renderOwners(payload) {
   }
   root.replaceChildren();
   if (!payload) { root.append(emptyState("Owner careers unavailable", "Try reloading the page.")); byId("ownersStatus").textContent = "Career data for this era is unavailable."; return; }
-  byId("ownerEraSummary").textContent = `${ownerEra === "ten-team" ? "10-team era" : "All seasons"} · ${(payload.qualifyingSeasons || []).map((season) => season.season).join(", ")}`;
-  byId("ownersStatus").textContent = !payload.currentDataAvailable ? "Historical careers available. Current-season contributions are unavailable." : payload.stale ? "Current-season contributions use saved data; the latest update is unavailable or overdue." : "Only finalized regular-season games count toward careers.";
+  byId("ownerEraSummary").textContent = `${ownerEra === "ten-team" ? "10-team era" : "All seasons"} · Regular season · ${seasonRange(payload.qualifyingSeasons || [])}`;
+  byId("ownersStatus").textContent = !payload.currentDataAvailable ? "Historical careers available. Current-season contributions are unavailable." : payload.stale ? "Current-season contributions use saved data; the latest update is unavailable or overdue." : "";
   const eligible = payload.owners.filter((item) => item.seasons.length);
   const careerStats = careerColumns(payload.qualifyingSeasons || []);
   const filtered = eligible.filter((item) => !byId("currentOwnersOnly").checked || item.current);
@@ -1068,10 +1120,15 @@ export function renderOwners(payload) {
     const back = el("button", "refresh-button", "← All owners");
     back.type = "button";
     back.addEventListener("click", () => { selectedOwner = null; renderOwners(ownerData); byId("ownersContent").querySelector(".owner-button")?.focus(); });
+    const profileHeader = el("div", "owner-profile-header");
+    const profileTitle = el("div", "owner-profile-title");
     const heading = el("h3", "owner-title");
     heading.append(ownerNameWithTrophies(owner));
     heading.tabIndex = -1;
-    root.append(back, heading);
+    profileTitle.append(back, heading);
+    if (owner?.seasons.length) profileHeader.append(profileTitle, ownerSeasonTimeline(owner, eligible));
+    else profileHeader.append(profileTitle);
+    root.append(profileHeader);
     if (!owner?.seasons.length) { root.append(emptyState("No seasons in this era", "Choose All seasons to view this owner's career.")); return; }
     const totals = simpleTable(careerStats.map((column) => column.label), [careerStats.map((column) => column.render ? column.render(owner) : column.format(owner[column.key]))], "Career totals");
     totals.querySelectorAll("thead th").forEach((th, index) => {
@@ -1084,7 +1141,7 @@ export function renderOwners(payload) {
     root.append(totals);
     const cards = el("div", "career-performance");
     const metrics = [
-      { label: "Median record", key: "medianWins", render: (row) => `${row.medianWins}-${row.medianLosses}${row.medianTies ? `-${row.medianTies}` : ""}`, help: "Weeks above, below, and tied with the league median." },
+      { label: "Median record", key: "medianWins", rankKey: "medianWinPct", render: (row) => `${row.medianWins}-${row.medianLosses}${row.medianTies ? `-${row.medianTies}` : ""}`, help: "Weeks above, below, and tied with the league median." },
       { label: "Cumulative vs median", key: "cumulativeDeltaMedian", format: signed, color: "zero", help: "Sum of score minus the league median for each qualifying week." },
       { label: "Best week", key: "bestScore", format: point, color: "range", help: "Highest qualifying weekly score." },
       { label: "Worst week", key: "worstScore", format: point, color: "range", help: "Lowest qualifying weekly score." },
@@ -1095,7 +1152,8 @@ export function renderOwners(payload) {
       const label = el("span", "", metric.label);
       label.title = metric.help;
       const value = el("strong", "", metric.render ? metric.render(owner) : metric.format(owner[metric.key]));
-      card.append(label, value, el("span", "visually-hidden", metric.help));
+      const rank = el("span", "benchmark-rank", metricRank(owner, eligible, metric));
+      card.append(label, value, rank, el("span", "visually-hidden", metric.help));
       colorPerformance(card, owner[metric.key], metric, eligible);
       cards.append(card);
     });
@@ -1166,6 +1224,7 @@ function scoreboardLink(season, ownerId, text) {
 export function prepareRecords(era) {
   recordsEra = era;
   byId("recordsEra").value = era;
+  setEraSwitch("recordsEraSwitch", era);
   const cached = recordsCache.get(era);
   if (cached) renderRecords(cached);
   else byId("recordsContent").replaceChildren();
@@ -1214,6 +1273,7 @@ export function prepareRivalry(selection) {
   rivalry = { stage: "all", ...selection };
   byId("h2hStageControls").querySelectorAll("button").forEach((button) => button.setAttribute("aria-pressed", String(button.dataset.stage === rivalry.stage)));
   byId("h2hEra").value = selection.era;
+  setEraSwitch("h2hEraSwitch", selection.era);
   setOwnerOption("h2hOwnerA", selection.ownerA); setOwnerOption("h2hOwnerB", selection.ownerB);
   const cached = rivalryCache.get(rivalryKey(rivalry));
   if (cached) renderRivalry(cached);

@@ -219,6 +219,10 @@ test("season UI: archive recap, owner profiles, links, visible-tab keyboard navi
   const oldLine = doc.querySelector('#trendChart [data-owner="gaurav"]');
   assert.deepEqual([oldLine.getAttribute("stroke"), oldLine.getAttribute("stroke-dasharray")], originalStyle);
   ui.renderOwners(archive.careers(null, { currentSeason: "2026" }));
+  assert.equal(doc.querySelectorAll("#ownersContent tbody tr").length, 10);
+  const filter = doc.getElementById("currentOwnersOnly");
+  filter.checked = false;
+  filter.dispatchEvent(new window.Event("change"));
   assert.equal(doc.querySelectorAll("#ownersContent tbody tr").length, 14);
   assert.equal(doc.querySelectorAll("#ownersContent .owner-icon").length, 10);
   const ownerRow = (name) => [...doc.querySelectorAll("#ownersContent tbody tr")].find((row) => row.textContent.startsWith(name));
@@ -226,7 +230,6 @@ test("season UI: archive recap, owner profiles, links, visible-tab keyboard navi
   assert.match(ownerRow("Ethan Miller").querySelector("img").src, /ethan_miller\.png$/);
   assert.equal(ownerRow("Daniel Pyo / Ethan Miller").querySelector("img"), null);
   assert.equal([...doc.querySelectorAll("#ownersContent thead th")].some((cell) => cell.textContent.includes("Titles")), false);
-  const filter = doc.getElementById("currentOwnersOnly");
   filter.checked = true;
   filter.dispatchEvent(new window.Event("change"));
   assert.equal(doc.querySelectorAll("#ownersContent tbody tr").length, 10);
@@ -371,6 +374,7 @@ test("owner sorting, era profiles, conditional colors and matching-cache fallbac
   ui.initializeUi({ onRefresh() {} });
   const all = archive.careers(null);
   const ten = archive.careers(null, { era: "ten-team" });
+  doc.getElementById("currentOwnersOnly").checked = false;
   ui.renderOwners(all);
   const header = (label) => [...doc.querySelectorAll("#ownersContent thead button")].find((button) => button.textContent.replace(/[↑↓]/g, "").trim() === label);
   header("PF").click();
@@ -437,7 +441,7 @@ test("era switching ignores late responses and never presents all-era totals as 
   assert.equal(doc.querySelectorAll("#ownersContent tbody tr").length, 0);
   change("all"); await flush();
   resolveTen(); await flush();
-  assert.equal(doc.querySelectorAll("#ownersContent tbody tr").length, 14);
+  assert.equal(doc.querySelectorAll("#ownersContent tbody tr").length, 10);
   assert.equal(doc.getElementById("ownerEra").value, "all");
   failTen = true;
   change("ten-team"); await flush();
