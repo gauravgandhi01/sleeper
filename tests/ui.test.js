@@ -15,12 +15,12 @@ test("record and rivalry panels render archive results, empty selectors, sorting
   const ui = await import(`../src/ui.js?research=${Date.now()}`);
   const selections = [];
   ui.initializeUi({ onRefresh() {}, onSeasonChange: (...args) => selections.push(args) });
-  assert.deepEqual([...doc.querySelectorAll('[role="tab"]')].map((tab) => tab.textContent), ["Scoreboard", "Live Scores", "Trends", "Stat book", "Owners", "Records", "Head-to-Head", "Draft Board"]);
+  assert.deepEqual([...doc.querySelectorAll('[role="tab"]')].map((tab) => tab.textContent), ["Scoreboard", "Live Scores", "Trends", "Stat book", "Draft Board", "Owners", "Records", "Head-to-Head"]);
   doc.getElementById("recordsTab").click();
   doc.getElementById("recordsTab").dispatchEvent(new window.KeyboardEvent("keydown", { key: "ArrowRight", bubbles: true }));
   assert.equal(doc.activeElement.id, "headToHeadTab");
   doc.getElementById("headToHeadTab").dispatchEvent(new window.KeyboardEvent("keydown", { key: "End", bubbles: true }));
-  assert.equal(doc.activeElement.id, "draftTab");
+  assert.equal(doc.activeElement.id, "headToHeadTab");
   ui.prepareRecords("ten-team");
   const records = leagueRecords(archive.archive, null);
   ui.renderRecords(records);
@@ -55,7 +55,7 @@ test("record and rivalry panels render archive results, empty selectors, sorting
   firstWinner.querySelector("img").dispatchEvent(new window.Event("error"));
   assert.equal(firstWinner.textContent, expectedWinner);
   assert.equal(doc.querySelectorAll("#headToHeadContent .benchmark").length, 0);
-  assert.deepEqual([...doc.querySelectorAll(".rivalry-comparison thead th")].map((cell) => cell.textContent), ["Metric", "Gaurav Gandhi", "Alex Henoch"]);
+  assert.deepEqual([...doc.querySelectorAll(".rivalry-comparison thead th")].map((cell) => cell.querySelector(".rivalry-header-avatar")?.getAttribute("aria-label") || cell.textContent), ["Metric", "Gaurav Gandhi", "Alex Henoch"]);
   assert.deepEqual([...doc.querySelectorAll(".rivalry-comparison .owner-icon")].map((img) => img.getAttribute("src")), ["./img/avatars/gaurav.png", "./img/avatars/alex.png"]);
   const comparisonRows = [...doc.querySelectorAll(".rivalry-comparison tbody tr")];
   const valuesFor = (label) => [...comparisonRows.find((row) => row.firstChild.textContent === label).querySelectorAll("td")];

@@ -32,19 +32,14 @@
           <strong id="brandName" class="visually-hidden">TrueWatch</strong>
         </span>
       </a>
-      <label class="theme-control season-control">
-        <span class="visually-hidden">Season</span>
-        <select id="seasonSelect" aria-label="Season"><option value="2026">2026 · Current</option></select>
-      </label>
+      <div class="season-control" aria-label="Season">
+        <select id="seasonSelect" class="visually-hidden" aria-label="Season"><option value="2026">2026 · Current</option></select>
+        <div id="seasonButtons" class="season-buttons" role="list" aria-label="Season choices"></div>
+      </div>
       <div class="header-actions">
-        <label class="theme-control">
-          <span class="visually-hidden">Color theme</span>
-          <select id="themeSelect" aria-label="Color theme">
-            <option value="system">System</option>
-            <option value="light">Light</option>
-            <option value="dark">Dark</option>
-          </select>
-        </label>
+        <button class="theme-toggle" id="themeToggle" type="button" aria-label="Switch to dark mode" aria-pressed="false">
+          <span aria-hidden="true">☾</span>
+        </button>
         <div class="data-status" id="dataStatus" role="status" aria-live="polite">
           <span class="status-dot" aria-hidden="true"></span>
           <span>
@@ -68,10 +63,10 @@
       <button class="section-tab" id="liveTab" type="button" role="tab" aria-selected="false" aria-controls="liveView" data-view="liveView" tabindex="-1">Live Scores</button>
       <button class="section-tab" id="weeklyTab" type="button" role="tab" aria-selected="false" aria-controls="weeklyView" data-view="weeklyView">Trends</button>
       <button class="section-tab" id="statbookTab" type="button" role="tab" aria-selected="false" aria-controls="statbookView" data-view="statbookView">Stat book</button>
-      <button class="section-tab" id="ownersTab" type="button" role="tab" aria-selected="false" aria-controls="ownersView" data-view="ownersView" tabindex="-1">Owners</button>
+      <button class="section-tab" id="draftTab" type="button" role="tab" aria-selected="false" aria-controls="draftView" data-view="draftView" tabindex="-1">Draft Board</button>
+      <button class="section-tab historical-start" id="ownersTab" type="button" role="tab" aria-selected="false" aria-controls="ownersView" data-view="ownersView" tabindex="-1">Owners</button>
       <button class="section-tab" id="recordsTab" type="button" role="tab" aria-selected="false" aria-controls="recordsView" data-view="recordsView" tabindex="-1">Records</button>
       <button class="section-tab" id="headToHeadTab" type="button" role="tab" aria-selected="false" aria-controls="headToHeadView" data-view="headToHeadView" tabindex="-1">Head-to-Head</button>
-      <button class="section-tab" id="draftTab" type="button" role="tab" aria-selected="false" aria-controls="draftView" data-view="draftView" tabindex="-1">Draft Board</button>
     </nav>
 
     <section id="overviewView" class="dashboard-view" role="tabpanel" aria-labelledby="overviewTab">
@@ -92,12 +87,16 @@
       <section class="panel section-panel">
         <div class="section-heading compact">
           <h2>Owner careers</h2>
-          <label class="theme-control">Era
-            <select id="ownerEra" aria-label="Career era">
+          <div class="era-switch" aria-label="Career era">
+            <select id="ownerEra" class="visually-hidden" aria-label="Career era">
               <option value="all">All seasons</option>
               <option value="ten-team">10-team era</option>
             </select>
-          </label>
+            <div id="ownerEraSwitch" class="segmented-control" role="group" aria-label="Career era">
+              <button class="segment-button" type="button" data-era="all" aria-pressed="true">All seasons</button>
+              <button class="segment-button" type="button" data-era="ten-team" aria-pressed="false">10-team era</button>
+            </div>
+          </div>
           <label><input id="currentOwnersOnly" type="checkbox"> Current owners only</label>
         </div>
         <p id="ownerEraSummary" class="section-note"></p>
@@ -111,7 +110,6 @@
           <div><p class="eyebrow accent">League record book</p><h2 id="recordsTitle">Records</h2></div>
           <label class="theme-control research-control">Era <select id="recordsEra" aria-label="Records era"><option value="ten-team">10-team era</option><option value="all">All seasons</option></select></label>
         </div>
-        <p class="section-note">Finalized regular-season games. Top five in each category, including ties. Ongoing seasons are labeled; win streaks can span seasons within the selected era.</p>
         <p id="recordsStatus" class="section-note" role="status"></p>
         <div id="recordsContent" class="records-grid"></div>
       </section>
@@ -120,12 +118,12 @@
       <section class="panel section-panel" aria-labelledby="headToHeadTitle">
         <div class="section-heading compact">
           <div><p class="eyebrow accent">Owner rivalries</p><h2 id="headToHeadTitle">Head-to-Head</h2></div>
-          <label class="theme-control research-control">Era <select id="h2hEra" aria-label="Head-to-head era"><option value="ten-team">10-team era</option><option value="all">All seasons</option></select></label>
+          <label class="theme-control research-control select-field">Era <select id="h2hEra" aria-label="Head-to-head era"><option value="ten-team">10-team era</option><option value="all">All seasons</option></select></label>
         </div>
         <div class="rivalry-controls">
-          <label class="theme-control research-control">Owner A <select id="h2hOwnerA" aria-label="Owner A"><option value="">Choose an owner</option></select></label>
-          <span aria-hidden="true">vs</span>
-          <label class="theme-control research-control">Owner B <select id="h2hOwnerB" aria-label="Owner B"><option value="">Choose an owner</option></select></label>
+          <label class="theme-control research-control select-field">Owner A <select id="h2hOwnerA" aria-label="Owner A"><option value="">Choose an owner</option></select></label>
+          <span class="rivalry-versus" aria-hidden="true">vs</span>
+          <label class="theme-control research-control select-field">Owner B <select id="h2hOwnerB" aria-label="Owner B"><option value="">Choose an owner</option></select></label>
         </div>
         <div id="h2hStageControls" class="segmented-control" role="group" aria-label="Matchup stage">
           <button class="segment-button" type="button" data-stage="all" aria-pressed="true">All games</button>

@@ -70,11 +70,10 @@ function signed(value, digits = 2) {
 }
 
 function makeOwnerIcon(owner) {
-  const icon = OWNER_ICONS[owner?.id];
-  if (!icon) return null;
+  const src = ownerIconSrc(owner?.id);
+  if (!src) return null;
   const portrait = el("img", "owner-icon");
-  const version = OWNER_ICON_VERSIONS[owner.id];
-  portrait.src = `./${icon}${version ? `?v=${version}` : ""}`;
+  portrait.src = src;
   portrait.alt = "";
   portrait.width = 32;
   portrait.height = 32;
@@ -82,6 +81,13 @@ function makeOwnerIcon(owner) {
   portrait.decoding = "async";
   portrait.addEventListener("error", () => portrait.remove(), { once: true });
   return portrait;
+}
+
+function ownerIconSrc(ownerId) {
+  const icon = OWNER_ICONS[ownerId];
+  if (!icon) return null;
+  const version = OWNER_ICON_VERSIONS[ownerId];
+  return `./${icon}${version ? `?v=${version}` : ""}`;
 }
 
 function compactOwner(owner) {
@@ -117,6 +123,20 @@ function ownerNameWithTrophies(owner, includeFormer = false) {
   return wrap;
 }
 
+function rivalryHeaderAvatar(owner) {
+  const wrap = el("span", "rivalry-header-avatar");
+  wrap.title = owner?.name || "Owner";
+  wrap.setAttribute("aria-label", owner?.name || "Owner");
+  const portrait = makeOwnerIcon(owner);
+  if (portrait) {
+    portrait.alt = "";
+    wrap.append(portrait);
+  } else {
+    wrap.append(el("span", "", owner?.name?.slice(0, 2).toUpperCase() || "OW"));
+  }
+  return wrap;
+}
+
 function dateTime(value) {
   if (!value) return "Unknown time";
   const date = new Date(value);
@@ -131,9 +151,11 @@ function teamInitials(team) {
 
 function makeAvatar(team) {
   const avatar = el("span", "team-avatar", teamInitials(team));
-  if (team.avatarUrl) {
+  const fallbackOwnerId = team.canonicalOwnerIds?.find((id) => OWNER_ICONS[id]);
+  const imageUrl = team.avatarUrl || ownerIconSrc(fallbackOwnerId);
+  if (imageUrl) {
     const image = el("img");
-    image.src = team.avatarUrl;
+    image.src = imageUrl;
     image.alt = "";
     image.loading = "lazy";
     image.addEventListener("error", () => { image.hidden = true; }, { once: true });
@@ -696,8 +718,16 @@ export function initializeUi({ onRefresh, onSeasonChange = () => {}, onOwnerEraC
   for (const id of ["h2hEra", "h2hOwnerA", "h2hOwnerB"]) byId(id).addEventListener("change", () => changeRivalry());
   byId("h2hStageControls").querySelectorAll("button").forEach((button) => button.addEventListener("click", () => changeRivalry(button.dataset.stage)));
   byId("seasonSelect").addEventListener("change", (event) => seasonHandler(event.target.value));
+  byId("seasonButtons").addEventListener("click", (event) => {
+    const button = event.target.closest("button[data-season]");
+    if (!button) return;
+    seasonHandler(button.dataset.season);
+  });
   byId("currentOwnersOnly").addEventListener("change", () => renderOwners(ownerData));
   byId("ownerEra").addEventListener("change", (event) => onOwnerEraChange(event.target.value));
+  byId("ownerEraSwitch").querySelectorAll("button[data-era]").forEach((button) => {
+    button.addEventListener("click", () => onOwnerEraChange(button.dataset.era));
+  });
   byId("refreshButton").addEventListener("click", refreshHandler);
   const tabs = [...document.querySelectorAll('[role="tab"]')];
   tabs.forEach((tab) => {
@@ -830,21 +860,40 @@ export function renderDashboard(stats, context = {}) {
 
 export function renderSeasons(catalog, selected) {
   const select = byId("seasonSelect");
+  const buttons = byId("seasonButtons");
   select.replaceChildren(...catalog.seasons.map((season) => {
     const option = el("option", "", `${season.season} · ${season.current ? "Current" : "ESPN"}`);
     option.value = season.season;
     return option;
   }));
+  buttons.replaceChildren(...catalog.seasons.map((season) => {
+    const button = el("button", "season-button");
+    button.type = "button";
+    button.dataset.season = season.season;
+    button.setAttribute("aria-pressed", String(season.season === selected));
+    button.append(el("span", "", season.season));
+    if (season.current) button.append(el("small", "", "Current"));
+    return button;
+  }));
   if (![...select.options].some((option) => option.value === selected)) {
     const unknown = el("option", "", `${selected} · Unavailable`);
     unknown.value = selected;
     select.append(unknown);
+    const button = el("button", "season-button");
+    button.type = "button";
+    button.dataset.season = selected;
+    button.setAttribute("aria-pressed", "true");
+    button.append(el("span", "", selected), el("small", "", "Unavailable"));
+    buttons.append(button);
   }
   select.value = selected;
 }
 
 export function prepareSeason(year, archived, ownerId, notify = true) {
   byId("seasonSelect").value = year;
+  byId("seasonButtons").querySelectorAll("button[data-season]").forEach((button) => {
+    button.setAttribute("aria-pressed", String(button.dataset.season === year));
+  });
   byId("brandSeason").textContent = `True League · ${year}`;
   highlightedOwner = ownerId;
   uiState.selectedMatchup = null;
@@ -909,6 +958,9 @@ function renderRecap(context) {
 export function prepareOwnerEra(era) {
   ownerEra = era;
   byId("ownerEra").value = era;
+  byId("ownerEraSwitch").querySelectorAll("button[data-era]").forEach((button) => {
+    button.setAttribute("aria-pressed", String(button.dataset.era === era));
+  });
   ownerData = ownerCache.get(era) || null;
   byId("ownerEraSummary").textContent = era === "ten-team" ? "10-team seasons only" : "All seasons";
   if (ownerData) renderOwners(ownerData);
@@ -935,6 +987,21 @@ function colorPerformance(cell, value, column, rows) {
   cell.style.setProperty("--score-shade", `${(Math.abs(balance) * 30).toFixed(2)}%`);
 }
 
+function playoffTimeline(owner, seasons) {
+  const wrap = el("span", "playoff-timeline");
+  const rowsBySeason = new Map((owner.seasons || []).map((row) => [row.season, row]));
+  for (const season of [...seasons].sort((a, b) => Number(a.season) - Number(b.season))) {
+    const row = rowsBySeason.get(season.season);
+    const known = row?.postseasonAppearance != null;
+    const mark = !row || !known ? "—" : row.postseasonAppearance ? "✅" : "❌";
+    const item = el("span", known && row.postseasonAppearance ? "made-playoffs" : known ? "missed-playoffs" : "unknown-playoffs", mark);
+    item.title = `${season.season}: ${!row ? "no qualifying season" : !known ? "postseason not available" : row.postseasonAppearance ? "playoff appearance" : "missed playoffs"}`;
+    wrap.append(item);
+  }
+  wrap.setAttribute("aria-label", [...wrap.children].map((item) => item.title).join("; "));
+  return wrap;
+}
+
 function careerTable(columns, rows, sort, captionText) {
   const sorted = [...rows].sort((a, b) => {
     const av = a[sort.key], bv = b[sort.key];
@@ -947,6 +1014,7 @@ function careerTable(columns, rows, sort, captionText) {
   const values = sorted.map((row) => columns.map((column) => column.render ? column.render(row) : column.format(row[column.key])));
   const wrap = simpleTable(columns.map((column) => column.label), values, captionText);
   const table = wrap.querySelector("table");
+  table.classList.add("owner-career-table");
   table.querySelectorAll("thead th").forEach((th, index) => {
     const column = columns[index];
     const buttonSort = { key: sort.column || columns.find((item) => item.key === sort.key)?.label, direction: sort.direction };
@@ -968,9 +1036,9 @@ function careerTable(columns, rows, sort, captionText) {
   return wrap;
 }
 
-function careerColumns() {
+function careerColumns(qualifyingSeasons = []) {
   return [
-    { label: "Playoffs", key: "postseasonAppearances", format: integer, help: "Confirmed championship-bracket appearances in qualifying seasons, excluding consolation games. Seasons without bracket data are not counted." },
+    { label: "Playoffs", key: "postseasonAppearances", render: (row) => playoffTimeline(row, qualifyingSeasons), help: "Chronological playoff results for seasons in the selected era: check means playoff appearance, X means missed playoffs, dash means not played or not yet available." },
     { label: "Record", key: "winPct", render: recordText, help: "Regular-season head-to-head record; sorted by win percentage." },
     { label: "Win %", key: "winPct", format: percentage, color: "percent", help: "Wins plus half of ties divided by decided games; neutral at 50%." },
     { label: "PF", key: "pointsFor", format: point, color: "range", help: "Total points across qualifying finalized weeks; colors compare displayed rows." },
@@ -993,6 +1061,7 @@ export function renderOwners(payload) {
   byId("ownerEraSummary").textContent = `${ownerEra === "ten-team" ? "10-team era" : "All seasons"} · ${(payload.qualifyingSeasons || []).map((season) => season.season).join(", ")}`;
   byId("ownersStatus").textContent = !payload.currentDataAvailable ? "Historical careers available. Current-season contributions are unavailable." : payload.stale ? "Current-season contributions use saved data; the latest update is unavailable or overdue." : "Only finalized regular-season games count toward careers.";
   const eligible = payload.owners.filter((item) => item.seasons.length);
+  const careerStats = careerColumns(payload.qualifyingSeasons || []);
   const filtered = eligible.filter((item) => !byId("currentOwnersOnly").checked || item.current);
   const owner = payload.owners.find((item) => item.id === selectedOwner);
   if (selectedOwner) {
@@ -1004,14 +1073,14 @@ export function renderOwners(payload) {
     heading.tabIndex = -1;
     root.append(back, heading);
     if (!owner?.seasons.length) { root.append(emptyState("No seasons in this era", "Choose All seasons to view this owner's career.")); return; }
-    const totals = simpleTable(careerColumns().map((column) => column.label), [careerColumns().map((column) => column.render ? column.render(owner) : column.format(owner[column.key]))], "Career totals");
+    const totals = simpleTable(careerStats.map((column) => column.label), [careerStats.map((column) => column.render ? column.render(owner) : column.format(owner[column.key]))], "Career totals");
     totals.querySelectorAll("thead th").forEach((th, index) => {
-      const column = careerColumns()[index];
+      const column = careerStats[index];
       th.title = column.help;
       th.tabIndex = 0;
       th.setAttribute("aria-label", `${column.label}: ${column.help}`);
     });
-    [...totals.querySelector("tbody tr").children].forEach((cell, index) => colorPerformance(cell, owner[careerColumns()[index].key], careerColumns()[index], eligible));
+    [...totals.querySelector("tbody tr").children].forEach((cell, index) => colorPerformance(cell, owner[careerStats[index].key], careerStats[index], eligible));
     root.append(totals);
     const cards = el("div", "career-performance");
     const metrics = [
@@ -1040,7 +1109,7 @@ export function renderOwners(payload) {
       } },
       { label: "Team", key: "teamName", format: (value) => value, help: "Team name in this season." },
       { label: "Playoffs", key: "postseasonAppearance", format: (value) => value == null ? "—" : value ? "✅" : "❌", help: "Championship-bracket participation from ESPN postseason matchups and playoff seeds; consolation games are excluded. A dash means not yet available." },
-      ...careerColumns().filter((column) => !["seasonsPlayed", "championships", "postseasonAppearances"].includes(column.key)),
+      ...careerStats.filter((column) => !["seasonsPlayed", "championships", "postseasonAppearances"].includes(column.key)),
       { label: "Champion", key: "champion", format: (value) => value ? "Yes" : "—", help: "Explicit championship designation; ongoing seasons are not inferred." },
     ];
     root.append(careerTable(columns, owner.seasons, ownerSeasonSort, "Owner season history"));
@@ -1053,7 +1122,7 @@ export function renderOwners(payload) {
       return button;
     } };
     if (!filtered.length) root.append(emptyState("No owners in this selection", "Change the era or current-owner filter."));
-    else root.append(careerTable([nameColumn, ...careerColumns()], filtered, ownerSort, "Owner career summaries"));
+    else root.append(careerTable([nameColumn, ...careerStats], filtered, ownerSort, "Owner career summaries"));
   }
 }
 
@@ -1194,7 +1263,7 @@ export function renderRivalry(payload, error = null) {
   const comparison = simpleTable(["Metric", a.name, b.name], metrics.map((metric) => [metric.label, ...(metric.display || metric.values.map((value) => metric.format(value)))]), "Owner head-to-head comparison");
   comparison.classList.add("rivalry-comparison");
   comparison.querySelectorAll("thead th").forEach((th, index) => {
-    if (index) th.replaceChildren(ownerNameWithTrophies(index === 1 ? a : b));
+    if (index) th.replaceChildren(rivalryHeaderAvatar(index === 1 ? a : b));
   });
   comparison.querySelectorAll("tbody tr").forEach((tr, index) => {
     const metric = metrics[index];
