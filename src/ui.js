@@ -480,11 +480,19 @@ function renderMatrixTable(stats) {
         cell.style.setProperty("--score-shade", `${(Math.abs(intensity - 0.5) * 60).toFixed(2)}%`);
         const aboveMedian = entry.score > week.leagueMedian;
         if (aboveMedian) {
-          const marker = el("span", "matrix-median-marker", "▴");
+          cell.classList.add("matrix-above-median");
+          const marker = el("span", "matrix-median-marker", "▲");
           marker.setAttribute("aria-hidden", "true");
           cell.append(marker, el("span", "visually-hidden", "; above weekly median"));
         }
         cell.title = `Score ${point(entry.score)} · Weekly median ${point(week.leagueMedian)}${aboveMedian ? " · Above median" : ""}${week.status === "live" ? " · Provisional; excluded from aggregates" : ""}`;
+      }
+      if (uiState.matrixMode === "score" && Number.isFinite(entry?.score) && Number.isFinite(entry?.rank)) {
+        cell.classList.add("matrix-ranked");
+        const badge = el("span", "matrix-rank", `${entry.rank}`);
+        badge.setAttribute("aria-hidden", "true");
+        cell.append(badge, el("span", "visually-hidden", `; weekly points rank ${entry.rank}${week.status === "live" ? ", provisional" : ""}`));
+        cell.title += ` · Weekly points rank ${entry.rank}`;
       }
       row.append(cell);
     });
@@ -560,23 +568,21 @@ function renderBenchmarks(stats) {
 
 function statbookColumns() {
   return [
-    { group: "Scoring", label: "Total", key: "total", format: point, color: "range" },
-    { group: "Scoring", label: "Average", key: "average", format: point, color: "range" },
-    { group: "Scoring", label: ">120", key: "over120", format: integer, color: "range" },
-    { group: "Scoring", label: "<110", key: "under110", format: integer, color: "inverse" },
-    { group: "Scoring", label: "Best", key: "bestScore", format: point, color: "range" },
-    { group: "Scoring", label: "Worst", key: "worstScore", format: point, color: "range" },
-    { group: "Scoring", label: "Score SD", key: "scoreDeviation", format: point, color: "inverse" },
-    { group: "Median", label: "Record", key: "medianWinPct", format: (_, team) => team.medianRecord },
-    { group: "Median", label: "Win %", key: "medianWinPct", format: percentage, color: "percent" },
-    { group: "Median", label: "Avg ±", key: "averageDeltaMedian", format: signed, color: "zero" },
-    { group: "Median", label: "Good", key: "greatWeeks", format: integer, color: "range" },
-    { group: "Median", label: "Average", key: "averageWeeks", format: integer },
-    { group: "Median", label: "Bad", key: "badWeeks", format: integer, color: "inverse" },
-    { group: "Rank", label: "Average", key: "averageRank", format: point, color: "inverse" },
-    { group: "Rank", label: "SD", key: "rankDeviation", format: rank, color: "inverse" },
-    { group: "Rank", label: "Best", key: "bestRank", format: integer, color: "inverse" },
-    { group: "Rank", label: "Worst", key: "worstRank", format: integer, color: "inverse" },
+    { group: "Scoring", label: "Total", key: "total", format: point, color: "range", help: "Total points across finalized regular-season weeks; live scores are excluded." },
+    { group: "Scoring", label: "Average", key: "average", format: point, color: "range", help: "Total points divided by finalized weeks." },
+    { group: "Scoring", label: "Best", key: "bestScore", format: point, color: "range", help: "Highest finalized weekly score." },
+    { group: "Scoring", label: "Worst", key: "worstScore", format: point, color: "range", help: "Lowest finalized weekly score." },
+    { group: "Scoring", label: "Score SD", key: "scoreDeviation", format: point, color: "inverse", help: "Sample standard deviation of weekly scores. Lower means more consistent scoring; unavailable with fewer than two weeks." },
+    { group: "Median", label: "Record", key: "medianWinPct", format: (_, team) => team.medianRecord, help: "Weekly median record: a win above the league median, a loss below it, and a tie at the median." },
+    { group: "Median", label: "Win %", key: "medianWinPct", format: percentage, color: "percent", help: "Median wins plus half of median ties, divided by finalized weeks." },
+    { group: "Median", label: "Avg ±", key: "averageDeltaMedian", format: signed, color: "zero", help: "Average weekly score minus that week's league median." },
+    { group: "Median", label: "Good", key: "greatWeeks", format: integer, color: "range", help: "Weeks scoring more than one weekly sample standard deviation above the league median." },
+    { group: "Median", label: "Average", key: "averageWeeks", format: integer, help: "Weeks within one weekly sample standard deviation of the median, including both boundaries." },
+    { group: "Median", label: "Bad", key: "badWeeks", format: integer, color: "inverse", help: "Weeks scoring more than one weekly sample standard deviation below the league median." },
+    { group: "Rank", label: "Average", key: "averageRank", format: point, color: "inverse", help: "Average weekly points rank. Highest score ranks first; tied scores share a competition rank." },
+    { group: "Rank", label: "SD", key: "rankDeviation", format: rank, color: "inverse", help: "Sample standard deviation of weekly points ranks. Lower means steadier placement; requires at least two weeks." },
+    { group: "Rank", label: "Best", key: "bestRank", format: integer, color: "inverse", help: "Best weekly points rank; lower is better." },
+    { group: "Rank", label: "Worst", key: "worstRank", format: integer, color: "inverse", help: "Worst weekly points rank; lower is better." },
   ];
 }
 
@@ -602,10 +608,15 @@ function renderStatbookTable(stats) {
   columns.forEach((column) => {
     const th = el("th");
     th.scope = "col";
-    th.append(sortButton(column.label, column.key, uiState.statSort, (sort) => {
+    const button = sortButton(column.label, column.key, uiState.statSort, (sort) => {
       uiState.statSort = sort;
       renderStatbookTable(stats);
-    }));
+    });
+    button.title = column.help;
+    const help = el("span", "visually-hidden", column.help);
+    help.id = `statbook-help-${column.group}-${column.label.replaceAll(" ", "-")}`;
+    button.setAttribute("aria-describedby", help.id);
+    th.append(button, help);
     labelRow.append(th);
   });
   thead.append(groupRow, labelRow);
@@ -632,40 +643,10 @@ function renderStatbookTable(stats) {
   root.append(table);
 }
 
-function renderGlossary(stats) {
-  const root = byId("glossaryGrid");
-  root.replaceChildren();
-  const items = [
-    ["Weekly average", "The arithmetic mean of all finalized team scores for that week."],
-    ["Weekly median", "The midpoint of all finalized team scores; with 10 teams, the middle two scores are averaged."],
-    ["Points above median", "A team's score minus that week's league median. Negative values are below the median."],
-    ["Median record", "A win for scoring above the weekly median, a loss below it, and a tie at exactly the median."],
-    ["Median win %", "Median wins plus half of median ties, divided by finalized weeks."],
-    ["Average PRK", "Average weekly points rank. Tied scores share a competition rank."],
-    [">120 / <110", "Counts use strict boundaries: scores must be greater than 120 or less than 110."],
-    ["Range", "Best weekly score minus worst weekly score."],
-    ["Score deviation", "Sample standard deviation of a team's weekly scores; shown after at least two finalized weeks."],
-    ["Good week", "Score greater than the weekly league median plus one sample standard deviation of all team scores that week."],
-    ["Average week", "Score within one weekly league sample standard deviation of the median, including both boundaries. Identical scores are all Average."],
-    ["Bad week", "Score less than the weekly league median minus one sample standard deviation of all team scores that week."],
-    ["Rank deviation", "Sample standard deviation of weekly points rank; lower means steadier placement."],
-    ["Total mean / median", "Mean and median across every finalized team score in the regular season."],
-    ["Median weekly median", "The median of the weekly league-median values."],
-    ["Mean pts > median", "The average of every team-week score-minus-median value."],
-    ["Mean pts deviation", "Population standard deviation of all score-minus-weekly-median values."],
-    ["Finalized only", "Live scores enter aggregates when Sleeper finalizes the week or Tuesday at 3 a.m. Eastern, whichever comes first. Archived regular-season scores are finalized."],
-  ];
-  items.forEach(([term, definition]) => {
-    const wrapper = el("dl", "glossary-item");
-    wrapper.append(el("dt", "", term), el("dd", "", definition));
-    root.append(wrapper);
-  });
-}
 
 function renderStatbook(stats) {
   renderBenchmarks(stats);
   renderStatbookTable(stats);
-  renderGlossary(stats);
 }
 
 export function initializeUi({ onRefresh, onSeasonChange = () => {}, onOwnerEraChange = () => {} }) {

@@ -368,7 +368,10 @@ h2 { max-width: 640px; font-size: clamp(1.45rem, 3vw, 2.35rem); }
 .matrix-live-label { display: block; margin-top: 2px; color: var(--accent-soft); font-size: .56rem; letter-spacing: .08em; }
 .matrix-live-cell { box-shadow: inset 2px 0 0 var(--line), inset -2px 0 0 var(--line); }
 .matrix-table tbody td.matrix-scored { position: relative; background-color: color-mix(in srgb, var(--score-color) var(--score-shade), var(--panel)); }
-.matrix-median-marker { position: absolute; right: 3px; top: 2px; font-size: .65rem; line-height: 1; color: var(--ink); }
+.matrix-above-median { font-weight: 850; box-shadow: inset 0 -3px 0 var(--ink); }
+.matrix-median-marker { position: absolute; right: 2px; top: 1px; font-size: .75rem; font-weight: 900; line-height: 1; color: var(--ink); }
+.matrix-ranked { position: relative; }
+.matrix-rank { position: absolute; left: 3px; bottom: 4px; color: var(--ink); font-size: .55rem; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; }
 .trend-owner-legend { display: flex; flex-wrap: wrap; gap: 8px 16px; max-width: 720px; }
 .trend-owner-key { display: inline-flex; align-items: center; gap: 5px; font-size: .76rem; }
 .career-performance { display: grid; grid-template-columns: repeat(auto-fit, minmax(145px, 1fr)); gap: 12px; margin-block: 16px; }
@@ -431,10 +434,6 @@ h2 { max-width: 640px; font-size: clamp(1.45rem, 3vw, 2.35rem); }
 .benchmark span { color: var(--muted); font-size: .75rem; font-weight: 800; text-transform: uppercase; letter-spacing: .07em; }
 .benchmark strong { margin-top: 12px; font-size: 1.8rem; letter-spacing: -.035em; }
 
-.glossary-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0 28px; }
-.glossary-item { padding: 18px 0; border-top: 1px solid var(--line); }
-.glossary-item dt { font-weight: 850; }
-.glossary-item dd { margin: 5px 0 0; color: var(--muted); font-size: .88rem; }
 
 .empty-state { padding: clamp(42px, 8vw, 90px) 24px; text-align: center; }
 .empty-state .empty-mark { width: 64px; height: 64px; display: grid; place-items: center; margin: 0 auto 20px; border-radius: 20px; background: var(--accent); color: var(--on-accent); font-size: 1.3rem; font-weight: 900; }
@@ -465,7 +464,6 @@ h2 { max-width: 640px; font-size: clamp(1.45rem, 3vw, 2.35rem); }
   .roster-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .live-scores { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .benchmark-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .glossary-grid { grid-template-columns: 1fr; }
   .footer-inner { align-items: flex-start; flex-direction: column; justify-content: center; }
 }
 
