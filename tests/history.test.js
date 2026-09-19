@@ -11,6 +11,23 @@ const archive = JSON.parse(await readFile(new URL("../data/history.json", import
 const history = new History(archive);
 const precise = JSON.parse(await readFile(new URL("../data/espn-scores.json", import.meta.url)));
 
+test("postseason appearances follow ESPN championship brackets across eras", () => {
+  const expected = [[1, 2, 6, 7, 8, 10], [1, 2, 6, 7, 8, 11], [1, 2, 4, 5, 8, 10], [3, 4, 5, 8, 9, 11], [2, 3, 4, 6, 9, 10], [3, 4, 5, 8, 9, 10], [1, 3, 4, 6, 8, 9], [2, 3, 4, 7, 9, 10]];
+  for (const { snapshot, recap } of archive.seasons) {
+    assert.deepEqual(recap.postseason.rosterIds, expected[Number(snapshot.metadata.season) - 2018]);
+  }
+  for (const [era, total] of [["all", 48], ["ten-team", 18]]) {
+    const careers = history.careers(null, { era });
+    assert.equal(careers.owners.reduce((sum, owner) => sum + owner.postseasonAppearances, 0), total);
+    for (const owner of careers.owners) assert.equal(owner.postseasonAppearances, owner.seasons.filter((row) => row.postseasonAppearance).length);
+  }
+  const changed = structuredClone(archive);
+  changed.seasons.forEach(({ recap }) => recap.standings.forEach((row) => { row.finalRank = 99; }));
+  assert.deepEqual(new History(changed).careers(null), history.careers(null));
+  changed.seasons[0].recap.postseason.rosterIds.push(999);
+  assert.throws(() => validateArchive(changed), /postseason/);
+});
+
 test("all eight archive seasons reconcile, with correct team counts and week lengths", () => {
   assert.equal(validateArchive(archive), archive);
   assert.equal(archive.seasons.reduce((sum, { snapshot }) => sum + snapshot.completedWeeks.reduce((n, week) => n + week.entries.length, 0), 0), 1224);
@@ -81,6 +98,8 @@ test("career metrics weight all finalized games and exclude live scores", () => 
   assert.equal(after.pointsPerGame, after.pointsFor / after.games);
   assert.equal(after.winPct, (after.wins + after.ties / 2) / (after.wins + after.losses + after.ties));
   assert.equal(after.championships, before.championships);
+  assert.equal(after.postseasonAppearances, before.postseasonAppearances);
+  assert.equal(after.seasons[0].postseasonAppearance, null);
   assert.equal(after.seasons[0].ongoing, true);
 });
 

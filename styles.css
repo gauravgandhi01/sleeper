@@ -551,6 +551,8 @@ h2 { max-width: 640px; font-size: clamp(1.45rem, 3vw, 2.35rem); }
 .history-table th:first-child { text-align: left; }
 .owner-title { margin: 20px 0 8px; }
 .owner-button { border: 0; background: none; color: var(--ink); padding: 8px 0; font: inherit; text-align: left; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+.owner-name-wrap { display: inline-flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+.owner-trophies { white-space: nowrap; font-size: .95em; text-decoration: none; }
 .season-link { color: var(--ink); text-underline-offset: 3px; }
 .matrix-table .owner-highlight td { border-top: 2px solid var(--accent); border-bottom: 2px solid var(--accent); }
 [hidden] { display: none !important; }

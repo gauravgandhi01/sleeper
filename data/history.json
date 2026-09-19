@@ -1396,6 +1396,59 @@
             "pointsAgainst": 1525.38
           }
         ],
+        "postseason": {
+          "source": "ESPN championship-bracket matchups, reconciled with ESPN playoff seeds",
+          "rosterIds": [
+            1,
+            2,
+            6,
+            7,
+            8,
+            10
+          ],
+          "matchups": [
+            {
+              "matchupRef": "2018:14:80",
+              "week": 14,
+              "homeRosterId": 10,
+              "awayRosterId": 8,
+              "tier": "WINNERS_BRACKET",
+              "bracketSource": "espn_tier"
+            },
+            {
+              "matchupRef": "2018:14:81",
+              "week": 14,
+              "homeRosterId": 6,
+              "awayRosterId": 1,
+              "tier": "WINNERS_BRACKET",
+              "bracketSource": "espn_tier"
+            },
+            {
+              "matchupRef": "2018:15:86",
+              "week": 15,
+              "homeRosterId": 7,
+              "awayRosterId": 8,
+              "tier": "WINNERS_BRACKET",
+              "bracketSource": "espn_tier"
+            },
+            {
+              "matchupRef": "2018:15:87",
+              "week": 15,
+              "homeRosterId": 2,
+              "awayRosterId": 1,
+              "tier": "WINNERS_BRACKET",
+              "bracketSource": "espn_tier"
+            },
+            {
+              "matchupRef": "2018:16:92",
+              "week": 16,
+              "homeRosterId": 2,
+              "awayRosterId": 8,
+              "tier": "WINNERS_BRACKET",
+              "bracketSource": "espn_tier"
+            }
+          ]
+        },
         "corrections": []
       }
     },
@@ -2787,6 +2840,59 @@
             "pointsAgainst": 1415.8999999999999
           }
         ],
+        "postseason": {
+          "source": "ESPN championship-bracket matchups, reconciled with ESPN playoff seeds",
+          "rosterIds": [
+            1,
+            2,
+            6,
+            7,
+            8,
+            11
+          ],
+          "matchups": [
+            {
+              "matchupRef": "2019:14:80",
+              "week": 14,
+              "homeRosterId": 6,
+              "awayRosterId": 7,
+              "tier": "WINNERS_BRACKET",
+              "bracketSource": "espn_tier"
+            },
+            {
+              "matchupRef": "2019:14:81",
+              "week": 14,
+              "homeRosterId": 2,
+              "awayRosterId": 1,
+              "tier": "WINNERS_BRACKET",
+              "bracketSource": "espn_tier"
+            },
+            {
+              "matchupRef": "2019:15:86",
+              "week": 15,
+              "homeRosterId": 8,
+              "awayRosterId": 7,
+              "tier": "WINNERS_BRACKET",
+              "bracketSource": "espn_tier"
+            },
+            {
+              "matchupRef": "2019:15:87",
+              "week": 15,
+              "homeRosterId": 11,
+              "awayRosterId": 2,
+              "tier": "WINNERS_BRACKET",
+              "bracketSource": "espn_tier"
+            },
+            {
+              "matchupRef": "2019:16:92",
+              "week": 16,
+              "homeRosterId": 8,
+              "awayRosterId": 2,
+              "tier": "WINNERS_BRACKET",
+              "bracketSource": "espn_tier"
+            }
+          ]
+        },
         "corrections": []
       }
     },
@@ -4177,6 +4283,59 @@
             "pointsAgainst": 1363.3999999999999
           }
         ],
+        "postseason": {
+          "source": "ESPN championship-bracket matchups, reconciled with ESPN playoff seeds",
+          "rosterIds": [
+            1,
+            2,
+            4,
+            5,
+            8,
+            10
+          ],
+          "matchups": [
+            {
+              "matchupRef": "2020:14:80",
+              "week": 14,
+              "homeRosterId": 10,
+              "awayRosterId": 4,
+              "tier": "WINNERS_BRACKET",
+              "bracketSource": "espn_tier"
+            },
+            {
+              "matchupRef": "2020:14:81",
+              "week": 14,
+              "homeRosterId": 5,
+              "awayRosterId": 2,
+              "tier": "WINNERS_BRACKET",
+              "bracketSource": "espn_tier"
+            },
+            {
+              "matchupRef": "2020:15:86",
+              "week": 15,
+              "homeRosterId": 8,
+              "awayRosterId": 4,
+              "tier": "WINNERS_BRACKET",
+              "bracketSource": "espn_tier"
+            },
+            {
+              "matchupRef": "2020:15:87",
+              "week": 15,
+              "homeRosterId": 1,
+              "awayRosterId": 2,
+              "tier": "WINNERS_BRACKET",
+              "bracketSource": "espn_tier"
+            },
+            {
+              "matchupRef": "2020:16:92",
+              "week": 16,
+              "homeRosterId": 8,
+              "awayRosterId": 1,
+              "tier": "WINNERS_BRACKET",
+              "bracketSource": "espn_tier"
+            }
+          ]
+        },
         "corrections": []
       }
     },
@@ -5645,6 +5804,59 @@
             "pointsAgainst": 1503.8400000000001
           }
         ],
+        "postseason": {
+          "source": "ESPN championship-bracket matchups, reconciled with ESPN playoff seeds",
+          "rosterIds": [
+            3,
+            4,
+            5,
+            8,
+            9,
+            11
+          ],
+          "matchups": [
+            {
+              "matchupRef": "2021:15:86",
+              "week": 15,
+              "homeRosterId": 5,
+              "awayRosterId": 4,
+              "tier": "WINNERS_BRACKET",
+              "bracketSource": "espn_tier"
+            },
+            {
+              "matchupRef": "2021:15:87",
+              "week": 15,
+              "homeRosterId": 8,
+              "awayRosterId": 3,
+              "tier": "WINNERS_BRACKET",
+              "bracketSource": "espn_tier"
+            },
+            {
+              "matchupRef": "2021:16:92",
+              "week": 16,
+              "homeRosterId": 9,
+              "awayRosterId": 4,
+              "tier": "WINNERS_BRACKET",
+              "bracketSource": "espn_tier"
+            },
+            {
+              "matchupRef": "2021:16:93",
+              "week": 16,
+              "homeRosterId": 11,
+              "awayRosterId": 8,
+              "tier": "WINNERS_BRACKET",
+              "bracketSource": "espn_tier"
+            },
+            {
+              "matchupRef": "2021:17:98",
+              "week": 17,
+              "homeRosterId": 11,
+              "awayRosterId": 4,
+              "tier": "WINNERS_BRACKET",
+              "bracketSource": "espn_tier"
+            }
+          ]
+        },
         "corrections": []
       }
     },
@@ -7113,6 +7325,59 @@
             "pointsAgainst": 1346.36
           }
         ],
+        "postseason": {
+          "source": "ESPN championship-bracket matchups, reconciled with ESPN playoff seeds",
+          "rosterIds": [
+            2,
+            3,
+            4,
+            6,
+            9,
+            10
+          ],
+          "matchups": [
+            {
+              "matchupRef": "2022:15:86",
+              "week": 15,
+              "homeRosterId": 3,
+              "awayRosterId": 4,
+              "tier": "WINNERS_BRACKET",
+              "bracketSource": "espn_tier"
+            },
+            {
+              "matchupRef": "2022:15:87",
+              "week": 15,
+              "homeRosterId": 6,
+              "awayRosterId": 10,
+              "tier": "WINNERS_BRACKET",
+              "bracketSource": "espn_tier"
+            },
+            {
+              "matchupRef": "2022:16:92",
+              "week": 16,
+              "homeRosterId": 2,
+              "awayRosterId": 4,
+              "tier": "WINNERS_BRACKET",
+              "bracketSource": "espn_tier"
+            },
+            {
+              "matchupRef": "2022:16:93",
+              "week": 16,
+              "homeRosterId": 9,
+              "awayRosterId": 10,
+              "tier": "WINNERS_BRACKET",
+              "bracketSource": "espn_tier"
+            },
+            {
+              "matchupRef": "2022:17:98",
+              "week": 17,
+              "homeRosterId": 9,
+              "awayRosterId": 4,
+              "tier": "WINNERS_BRACKET",
+              "bracketSource": "espn_tier"
+            }
+          ]
+        },
         "corrections": [
           {
             "type": "champion",
@@ -8378,6 +8643,59 @@
             "pointsAgainst": 1742.04
           }
         ],
+        "postseason": {
+          "source": "ESPN championship-bracket matchups, reconciled with ESPN playoff seeds",
+          "rosterIds": [
+            3,
+            4,
+            5,
+            8,
+            9,
+            10
+          ],
+          "matchups": [
+            {
+              "matchupRef": "2023:15:72",
+              "week": 15,
+              "homeRosterId": 10,
+              "awayRosterId": 5,
+              "tier": "WINNERS_BRACKET",
+              "bracketSource": "espn_tier"
+            },
+            {
+              "matchupRef": "2023:15:73",
+              "week": 15,
+              "homeRosterId": 8,
+              "awayRosterId": 3,
+              "tier": "WINNERS_BRACKET",
+              "bracketSource": "espn_tier"
+            },
+            {
+              "matchupRef": "2023:16:77",
+              "week": 16,
+              "homeRosterId": 4,
+              "awayRosterId": 10,
+              "tier": "WINNERS_BRACKET",
+              "bracketSource": "espn_tier"
+            },
+            {
+              "matchupRef": "2023:16:78",
+              "week": 16,
+              "homeRosterId": 9,
+              "awayRosterId": 8,
+              "tier": "WINNERS_BRACKET",
+              "bracketSource": "espn_tier"
+            },
+            {
+              "matchupRef": "2023:17:82",
+              "week": 17,
+              "homeRosterId": 8,
+              "awayRosterId": 10,
+              "tier": "WINNERS_BRACKET",
+              "bracketSource": "espn_tier"
+            }
+          ]
+        },
         "corrections": []
       }
     },
@@ -9620,6 +9938,59 @@
             "pointsAgainst": 1796.2800000000002
           }
         ],
+        "postseason": {
+          "source": "ESPN championship-bracket matchups, reconciled with ESPN playoff seeds",
+          "rosterIds": [
+            1,
+            3,
+            4,
+            6,
+            8,
+            9
+          ],
+          "matchups": [
+            {
+              "matchupRef": "2024:15:72",
+              "week": 15,
+              "homeRosterId": 6,
+              "awayRosterId": 3,
+              "tier": "WINNERS_BRACKET",
+              "bracketSource": "espn_tier"
+            },
+            {
+              "matchupRef": "2024:15:73",
+              "week": 15,
+              "homeRosterId": 8,
+              "awayRosterId": 4,
+              "tier": "WINNERS_BRACKET",
+              "bracketSource": "espn_tier"
+            },
+            {
+              "matchupRef": "2024:16:77",
+              "week": 16,
+              "homeRosterId": 9,
+              "awayRosterId": 6,
+              "tier": "WINNERS_BRACKET",
+              "bracketSource": "espn_tier"
+            },
+            {
+              "matchupRef": "2024:16:78",
+              "week": 16,
+              "homeRosterId": 1,
+              "awayRosterId": 8,
+              "tier": "WINNERS_BRACKET",
+              "bracketSource": "espn_tier"
+            },
+            {
+              "matchupRef": "2024:17:82",
+              "week": 17,
+              "homeRosterId": 8,
+              "awayRosterId": 6,
+              "tier": "WINNERS_BRACKET",
+              "bracketSource": "espn_tier"
+            }
+          ]
+        },
         "corrections": []
       }
     },
@@ -10862,6 +11233,59 @@
             "pointsAgainst": 1742.8000000000002
           }
         ],
+        "postseason": {
+          "source": "ESPN championship-bracket matchups, reconciled with ESPN playoff seeds",
+          "rosterIds": [
+            2,
+            3,
+            4,
+            7,
+            9,
+            10
+          ],
+          "matchups": [
+            {
+              "matchupRef": "2025:15:72",
+              "week": 15,
+              "homeRosterId": 3,
+              "awayRosterId": 9,
+              "tier": "WINNERS_BRACKET",
+              "bracketSource": "espn_tier"
+            },
+            {
+              "matchupRef": "2025:15:73",
+              "week": 15,
+              "homeRosterId": 2,
+              "awayRosterId": 10,
+              "tier": "WINNERS_BRACKET",
+              "bracketSource": "espn_tier"
+            },
+            {
+              "matchupRef": "2025:16:77",
+              "week": 16,
+              "homeRosterId": 4,
+              "awayRosterId": 9,
+              "tier": "WINNERS_BRACKET",
+              "bracketSource": "espn_tier"
+            },
+            {
+              "matchupRef": "2025:16:78",
+              "week": 16,
+              "homeRosterId": 7,
+              "awayRosterId": 2,
+              "tier": "WINNERS_BRACKET",
+              "bracketSource": "espn_tier"
+            },
+            {
+              "matchupRef": "2025:17:82",
+              "week": 17,
+              "homeRosterId": 4,
+              "awayRosterId": 2,
+              "tier": "WINNERS_BRACKET",
+              "bracketSource": "espn_tier"
+            }
+          ]
+        },
         "corrections": []
       }
     }

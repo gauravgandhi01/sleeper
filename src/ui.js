@@ -66,6 +66,19 @@ function signed(value, digits = 2) {
   return `${value > 0 ? "+" : ""}${Number(value).toFixed(digits)}`;
 }
 
+function ownerNameWithTrophies(owner, includeFormer = false) {
+  const wrap = el("span", "owner-name-wrap");
+  wrap.append(document.createTextNode(`${owner?.name || "Owner career"}${includeFormer && !owner?.current ? " · Former" : ""}`));
+  const championships = Math.max(0, Number(owner?.championships) || 0);
+  if (championships) {
+    const trophies = el("span", "owner-trophies", " " + "🏆".repeat(championships));
+    trophies.title = `${championships} championship${championships === 1 ? "" : "s"}`;
+    trophies.setAttribute("aria-label", `${championships} championship${championships === 1 ? "" : "s"}`);
+    wrap.append(trophies);
+  }
+  return wrap;
+}
+
 function dateTime(value) {
   if (!value) return "Unknown time";
   const date = new Date(value);
@@ -438,6 +451,10 @@ function renderMatrixTable(stats) {
   const summaryHead = el("th", "", summaryLabel);
   summaryHead.scope = "col";
   head.append(summaryHead);
+  const totalHead = el("th", "", "Total PF");
+  totalHead.scope = "col";
+  totalHead.title = "Total points for across finalized regular-season weeks; live scores excluded";
+  head.append(totalHead);
   thead.append(head);
 
   const tbody = el("tbody");
@@ -477,6 +494,7 @@ function renderMatrixTable(stats) {
         ? signed(team.averageDeltaMedian)
         : rank(team.averageRank);
     row.append(el("td", "", summary));
+    row.append(el("td", "", point(team.total)));
     tbody.append(row);
   });
 
@@ -502,6 +520,7 @@ function renderMatrixTable(stats) {
         row.append(cell);
       });
       row.append(el("td", "", summary));
+      row.append(el("td", "", "—"));
       tfoot.append(row);
     });
   }
@@ -521,15 +540,16 @@ function renderWeekly(stats) {
 function renderBenchmarks(stats) {
   const root = byId("leagueBenchmarks");
   root.replaceChildren();
+  const scores = stats.weeks.flatMap((week) => week.entries.map((entry) => entry.score));
   const metrics = [
     ["Total mean", point(stats.league.overallMean)],
     ["Total median", point(stats.league.overallMedian)],
     ["Total deviation", point(stats.league.scoreDeviation)],
     ["Median weekly median", point(stats.league.medianOfWeeklyMedians)],
     ["Mean pts > median", signed(stats.league.meanDeltaMedian)],
-    ["Median pts > median", signed(stats.league.medianDeltaMedian)],
+    ["Season high", point(scores.length ? Math.max(...scores) : null)],
     ["Mean pts deviation", point(stats.league.deltaDeviation)],
-    ["Finalized scores", integer(stats.league.scoreCount)],
+    ["Season low", point(scores.length ? Math.min(...scores) : null)],
   ];
   metrics.forEach(([label, value]) => {
     const card = el("article", "benchmark");
@@ -540,23 +560,23 @@ function renderBenchmarks(stats) {
 
 function statbookColumns() {
   return [
-    { group: "Scoring", label: "Total", key: "total", format: point },
-    { group: "Scoring", label: "Average", key: "average", format: point },
-    { group: "Scoring", label: ">120", key: "over120", format: integer },
-    { group: "Scoring", label: "<110", key: "under110", format: integer },
-    { group: "Scoring", label: "Best", key: "bestScore", format: point },
-    { group: "Scoring", label: "Worst", key: "worstScore", format: point },
-    { group: "Scoring", label: "Score SD", key: "scoreDeviation", format: point },
+    { group: "Scoring", label: "Total", key: "total", format: point, color: "range" },
+    { group: "Scoring", label: "Average", key: "average", format: point, color: "range" },
+    { group: "Scoring", label: ">120", key: "over120", format: integer, color: "range" },
+    { group: "Scoring", label: "<110", key: "under110", format: integer, color: "inverse" },
+    { group: "Scoring", label: "Best", key: "bestScore", format: point, color: "range" },
+    { group: "Scoring", label: "Worst", key: "worstScore", format: point, color: "range" },
+    { group: "Scoring", label: "Score SD", key: "scoreDeviation", format: point, color: "inverse" },
     { group: "Median", label: "Record", key: "medianWinPct", format: (_, team) => team.medianRecord },
-    { group: "Median", label: "Win %", key: "medianWinPct", format: percentage },
-    { group: "Median", label: "Avg ±", key: "averageDeltaMedian", format: signed },
-    { group: "Median", label: "Good", key: "greatWeeks", format: integer },
+    { group: "Median", label: "Win %", key: "medianWinPct", format: percentage, color: "percent" },
+    { group: "Median", label: "Avg ±", key: "averageDeltaMedian", format: signed, color: "zero" },
+    { group: "Median", label: "Good", key: "greatWeeks", format: integer, color: "range" },
     { group: "Median", label: "Average", key: "averageWeeks", format: integer },
-    { group: "Median", label: "Bad", key: "badWeeks", format: integer },
-    { group: "Rank", label: "Average", key: "averageRank", format: point },
-    { group: "Rank", label: "SD", key: "rankDeviation", format: rank },
-    { group: "Rank", label: "Best", key: "bestRank", format: integer },
-    { group: "Rank", label: "Worst", key: "worstRank", format: integer },
+    { group: "Median", label: "Bad", key: "badWeeks", format: integer, color: "inverse" },
+    { group: "Rank", label: "Average", key: "averageRank", format: point, color: "inverse" },
+    { group: "Rank", label: "SD", key: "rankDeviation", format: rank, color: "inverse" },
+    { group: "Rank", label: "Best", key: "bestRank", format: integer, color: "inverse" },
+    { group: "Rank", label: "Worst", key: "worstRank", format: integer, color: "inverse" },
   ];
 }
 
@@ -603,6 +623,7 @@ function renderStatbookTable(stats) {
       if (column.key === "averageDeltaMedian") cell.className = team[column.key] > 0 ? "positive" : team[column.key] < 0 ? "negative" : "";
       if (column.label === "Record") cell.append(el("span", "record-pill", rendered));
       else cell.textContent = rendered;
+      colorPerformance(cell, team[column.key], column, stats.teams);
       row.append(cell);
     });
     tbody.append(row);
@@ -918,14 +939,13 @@ function careerTable(columns, rows, sort, captionText) {
 
 function careerColumns() {
   return [
-    { label: "Seasons", key: "seasonsPlayed", format: integer, help: "Qualifying seasons with at least one finalized game." },
+    { label: "Playoffs", key: "postseasonAppearances", format: integer, help: "Confirmed championship-bracket appearances in qualifying seasons, excluding consolation games. Seasons without bracket data are not counted." },
     { label: "Record", key: "winPct", render: recordText, help: "Regular-season head-to-head record; sorted by win percentage." },
     { label: "Win %", key: "winPct", format: percentage, color: "percent", help: "Wins plus half of ties divided by decided games; neutral at 50%." },
     { label: "PF", key: "pointsFor", format: point, color: "range", help: "Total points across qualifying finalized weeks; colors compare displayed rows." },
     { label: "Points/game", key: "pointsPerGame", format: point, color: "range", help: "Total points divided by scored weeks, not an average of season averages." },
     { label: "Median win %", key: "medianWinPct", format: percentage, color: "percent", help: "Weeks above median plus half of median ties divided by finalized weeks; neutral at 50%." },
     { label: "Avg vs median", key: "averageDeltaMedian", format: signed, color: "zero", help: "Mean score minus that week's median; neutral at zero." },
-    { label: "Titles", key: "championships", format: integer, color: "range", help: "Explicit championship designations in qualifying seasons." },
   ];
 }
 
@@ -948,7 +968,8 @@ export function renderOwners(payload) {
     const back = el("button", "refresh-button", "← All owners");
     back.type = "button";
     back.addEventListener("click", () => { selectedOwner = null; renderOwners(ownerData); byId("ownersContent").querySelector(".owner-button")?.focus(); });
-    const heading = el("h3", "owner-title", owner?.name || "Owner career");
+    const heading = el("h3", "owner-title");
+    heading.append(ownerNameWithTrophies(owner));
     heading.tabIndex = -1;
     root.append(back, heading);
     if (!owner?.seasons.length) { root.append(emptyState("No seasons in this era", "Choose All seasons to view this owner's career.")); return; }
@@ -987,14 +1008,16 @@ export function renderOwners(payload) {
         return link;
       } },
       { label: "Team", key: "teamName", format: (value) => value, help: "Team name in this season." },
-      ...careerColumns().filter((column) => !["seasonsPlayed", "championships"].includes(column.key)),
+      { label: "Playoffs", key: "postseasonAppearance", format: (value) => value == null ? "Unavailable" : value ? "Yes" : "No", help: "Championship-bracket participation from ESPN postseason matchups and playoff seeds; consolation games are excluded." },
+      ...careerColumns().filter((column) => !["seasonsPlayed", "championships", "postseasonAppearances"].includes(column.key)),
       { label: "Champion", key: "champion", format: (value) => value ? "Yes" : "—", help: "Explicit championship designation; ongoing seasons are not inferred." },
     ];
     root.append(careerTable(columns, owner.seasons, ownerSeasonSort, "Owner season history"));
   } else {
-    const nameColumn = { label: "Owner", key: "name", help: "Owner name; open the individual career profile.", render: (item) => {
-      const button = el("button", "owner-button", `${item.name}${item.current ? "" : " · Former"}`);
+    const nameColumn = { label: "Owner", key: "name", help: "Owner name; open the individual career profile. Trophy icons indicate explicit championships in qualifying seasons.", render: (item) => {
+      const button = el("button", "owner-button");
       button.type = "button";
+      button.append(ownerNameWithTrophies(item, true));
       button.addEventListener("click", () => { selectedOwner = item.id; renderOwners(ownerData); byId("ownersContent").querySelector("h3")?.focus(); });
       return button;
     } };

@@ -67,6 +67,11 @@ export function validateArchive(archive) {
     }
     if (snapshot.teams.some((team) => team.canonicalOwnerIds?.length !== 1 || !owners.some((owner) => owner.id === team.canonicalOwnerIds[0]))) throw new Error("Unknown archive owner");
     if (recap.standings.length !== snapshot.teams.length || recap.standings.filter((row) => row.isChampion).length !== 1) throw new Error("Invalid archive standings");
+    if (recap.postseason) {
+      const ids = recap.postseason.rosterIds;
+      const games = recap.postseason.matchups;
+      if (!Array.isArray(ids) || new Set(ids).size !== ids.length || ids.some((id) => !snapshot.teams.some((team) => team.rosterId === id)) || !Array.isArray(games) || !games.length || games.some((game) => game.week <= snapshot.metadata.regularSeasonEnd || game.homeRosterId === game.awayRosterId || !ids.includes(game.homeRosterId) || !ids.includes(game.awayRosterId)) || ids.some((id) => !games.some((game) => game.homeRosterId === id || game.awayRosterId === id))) throw new Error("Invalid archive postseason evidence");
+    }
     for (const row of seasonRecords(snapshot)) {
       const standing = recap.standings.find((item) => item.rosterId === row.rosterId);
       // Raw API values must reconcile within floating-point error only.
@@ -98,19 +103,20 @@ export class History {
       for (const row of seasonRecords(snapshot)) {
         for (const ownerId of row.canonicalOwnerIds) {
           if (!known.has(ownerId)) known.set(ownerId, { id: ownerId, name: snapshot.teams.find((team) => team.rosterId === row.rosterId).managerName, current: true, seasons: [] });
-          known.get(ownerId).seasons.push({ ...row, teamCount: snapshot.metadata.teamCount, season: snapshot.metadata.season, ongoing: snapshot.metadata.source !== "espn" && snapshot.metadata.status !== "complete", champion: recap.standings.some((standing) => standing.rosterId === row.rosterId && standing.isChampion) });
+          known.get(ownerId).seasons.push({ ...row, postseasonAppearance: recap.postseason ? recap.postseason.rosterIds.includes(row.rosterId) : null, teamCount: snapshot.metadata.teamCount, season: snapshot.metadata.season, ongoing: snapshot.metadata.source !== "espn" && snapshot.metadata.status !== "complete", champion: recap.standings.some((standing) => standing.rosterId === row.rosterId && standing.isChampion) });
         }
       }
     }
     return { schemaVersion: 1, era, qualifyingSeasons: eligible.map(({ snapshot }) => ({ season: snapshot.metadata.season, teamCount: snapshot.metadata.teamCount })).sort((a, b) => Number(b.season) - Number(a.season)), currentSeason: String(currentSeason), currentDataAvailable: Boolean(currentSnapshot), stale,
       owners: [...known.values()].map((owner) => {
-        const total = { seasonsPlayed: 0, games: 0, wins: 0, losses: 0, ties: 0, pointsFor: 0, championships: 0, medianWins: 0, medianLosses: 0, medianTies: 0, cumulativeDeltaMedian: 0, scoreValues: [] };
+        const total = { seasonsPlayed: 0, games: 0, wins: 0, losses: 0, ties: 0, pointsFor: 0, championships: 0, postseasonAppearances: 0, medianWins: 0, medianLosses: 0, medianTies: 0, cumulativeDeltaMedian: 0, scoreValues: [] };
         const years = new Set();
         for (const row of owner.seasons) {
           if (row.games) years.add(row.season);
           for (const key of ["games", "wins", "losses", "ties", "pointsFor", "medianWins", "medianLosses", "medianTies", "cumulativeDeltaMedian"]) total[key] += row[key];
           total.scoreValues.push(...row.scoreValues);
           if (row.champion) total.championships++;
+          if (row.postseasonAppearance) total.postseasonAppearances++;
         }
         total.seasonsPlayed = years.size;
         const metrics = careerMetrics(total);

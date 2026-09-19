@@ -12,6 +12,12 @@ export function importHistory(html, precise) {
   const seasons = data.seasons.map((season) => {
     const year = season.year;
     const sourceTeams = data.teams.filter((team) => team.year === year);
+    const playoffGames = data.matchups.filter((game) => game.year === year && game.stage === "playoff" && game.bracket_type === "playoff" && game.completed && game.home && game.away);
+    const participants = [...new Set(playoffGames.flatMap((game) => [game.home.team_id, game.away.team_id]))].sort((a, b) => a - b);
+    const seeded = sourceTeams.filter((team) => team.playoff_seed > 0 && team.playoff_seed <= season.playoff_team_count).map((team) => team.team_id).sort((a, b) => a - b);
+    if (participants.length !== season.playoff_team_count || JSON.stringify(participants) !== JSON.stringify(seeded)) throw new Error(`Postseason bracket/seed mismatch: ${year}`);
+    const postseason = { source: "ESPN championship-bracket matchups, reconciled with ESPN playoff seeds", rosterIds: participants,
+      matchups: playoffGames.map((game) => ({ matchupRef: game.matchup_ref, week: game.week, homeRosterId: game.home.team_id, awayRosterId: game.away.team_id, tier: game.playoff_tier, bracketSource: game.bracket_source })) };
     const teams = sourceTeams.map((team) => {
       const owner = owners.find((item) => item.espnKey === team.manager_key);
       if (!owner) throw new Error(`Unmapped owner: ${team.owner_display}`);
@@ -28,7 +34,7 @@ export function importHistory(html, precise) {
       completedWeeks.push({ week, status: "final", entries });
     }
     const standings = data.standings.filter((row) => row.year === year).map((row) => ({ rosterId: row.team_id, teamName: row.team_name, managerName: teams.find((team) => team.rosterId === row.team_id)?.managerName, finalRank: row.final_rank, isChampion: row.is_champion, championNote: row.champion_note, wins: row.wins, losses: row.losses, ties: row.ties, pointsFor: row.points_for, pointsAgainst: row.points_against }));
-    return { snapshot: { metadata: { leagueId: "espn:594599", source: "espn", name: season.league_name, season: String(year), teamCount: season.team_count, startWeek: season.first_scoring_period, regularSeasonEnd: season.reg_season_count, currentWeek: season.reg_season_count + 1, lastCompletedWeek: season.reg_season_count }, teams, completedWeeks, liveWeek: null, currentWeekData: null, warnings: [] }, recap: { standings, corrections: data.metadata.manual_overrides.filter((item) => item.year === year) } };
+    return { snapshot: { metadata: { leagueId: "espn:594599", source: "espn", name: season.league_name, season: String(year), teamCount: season.team_count, startWeek: season.first_scoring_period, regularSeasonEnd: season.reg_season_count, currentWeek: season.reg_season_count + 1, lastCompletedWeek: season.reg_season_count }, teams, completedWeeks, liveWeek: null, currentWeekData: null, warnings: [] }, recap: { standings, postseason, corrections: data.metadata.manual_overrides.filter((item) => item.year === year) } };
   });
   const archive = validateArchive({ schemaVersion: 1, provenance: { source: "ESPN historical dashboard", generatedAt: data.metadata.generated_at, leagueId: String(data.metadata.league_id), precisionNote: "Archived weekly scores are rounded to one decimal in the source. Scoring totals are calculated from those scores and may differ slightly from ESPN standings totals. Records preserve recorded matchup outcomes, including wins that round to tied scores." }, seasons });
   return precise ? applyPrecision(archive, precise) : archive;

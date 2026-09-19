@@ -62,13 +62,16 @@ test("season UI: archive recap, owner profiles, links, visible-tab keyboard navi
   assert.deepEqual([oldLine.getAttribute("stroke"), oldLine.getAttribute("stroke-dasharray")], originalStyle);
   ui.renderOwners(archive.careers(null, { currentSeason: "2026" }));
   assert.equal(doc.querySelectorAll("#ownersContent tbody tr").length, 14);
+  assert.equal([...doc.querySelectorAll("#ownersContent thead th")].some((cell) => cell.textContent.includes("Titles")), false);
   const filter = doc.getElementById("currentOwnersOnly");
   filter.checked = true;
   filter.dispatchEvent(new window.Event("change"));
   assert.equal(doc.querySelectorAll("#ownersContent tbody tr").length, 10);
   const gaurav = [...doc.querySelectorAll(".owner-button")].find((button) => button.textContent.includes("Gaurav"));
+  assert.match(gaurav.textContent, /🏆/);
   gaurav.click();
-  assert.equal(doc.querySelector("#ownersContent h3").textContent, "Gaurav Gandhi");
+  assert.match(doc.querySelector("#ownersContent h3").textContent, /^Gaurav Gandhi/);
+  assert.match(doc.querySelector("#ownersContent h3").textContent, /🏆/);
   const link = doc.querySelector("#ownersContent a");
   assert.match(link.href, /season=2025&owner=gaurav/);
   link.click();
@@ -174,12 +177,28 @@ test("live matrix cells have no heat or median marker and do not rescale finaliz
   payload.stats.weeks = payload.stats.weeks.slice(0, 1);
   ui.renderDashboard(payload.stats, payload);
   const shades = [...doc.querySelectorAll("#matrixTable .matrix-scored")].map((cell) => cell.getAttribute("style"));
+  const totals = [...doc.querySelectorAll("#matrixTable tbody tr")].map((row) => row.lastElementChild.textContent);
+  assert.equal(doc.querySelector("#matrixTable thead tr").lastElementChild.textContent, "Total PF");
+  assert.deepEqual(totals, payload.stats.teams.map((team) => team.total.toFixed(2)));
   payload.stats.liveWeek = { ...structuredClone(payload.stats.weeks[0]), week: 2, status: "live" };
   payload.stats.liveWeek.entries.forEach((entry) => { entry.score = 99999; });
   ui.renderDashboard(payload.stats, payload);
   assert.deepEqual([...doc.querySelectorAll("#matrixTable .matrix-scored")].map((cell) => cell.getAttribute("style")), shades);
   assert.equal(doc.querySelectorAll("#matrixTable .matrix-live-cell.matrix-scored, #matrixTable .matrix-live-cell .matrix-median-marker").length, 0);
   assert.match(doc.querySelector(".matrix-live-head").textContent, /Live/);
+  assert.ok(doc.querySelectorAll("#statbookTable .career-colored").length > 0);
+  assert.equal(doc.querySelector("#statbookTable tbody tr").firstElementChild.classList.contains("career-colored"), false);
+  assert.equal(doc.querySelector("#statbookTable .record-pill").parentElement.classList.contains("career-colored"), false);
+  assert.equal(doc.getElementById("statbookTable").compareDocumentPosition(doc.getElementById("leagueBenchmarks")) & Node.DOCUMENT_POSITION_FOLLOWING, Node.DOCUMENT_POSITION_FOLLOWING);
+  assert.doesNotMatch(doc.getElementById("leagueBenchmarks").textContent, /Median pts > median|Finalized scores/);
+  assert.match(doc.getElementById("leagueBenchmarks").textContent, /Season high/);
+  assert.match(doc.getElementById("leagueBenchmarks").textContent, /Season low/);
+  for (const button of doc.querySelectorAll("#matrixControls button")) {
+    button.click();
+    assert.deepEqual([...doc.querySelectorAll("#matrixTable tbody tr")].map((row) => row.lastElementChild.textContent), totals);
+    const count = doc.querySelector("#matrixTable thead tr").children.length;
+    assert.ok([...doc.querySelectorAll("#matrixTable tbody tr, #matrixTable tfoot tr")].every((row) => row.children.length === count));
+  }
   assert.doesNotMatch(doc.body.textContent, /Red to green =|Regular-season results across all seasons/);
 });
 
