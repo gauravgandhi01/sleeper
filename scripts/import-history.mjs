@@ -17,7 +17,13 @@ export function importHistory(html, precise) {
     const seeded = sourceTeams.filter((team) => team.playoff_seed > 0 && team.playoff_seed <= season.playoff_team_count).map((team) => team.team_id).sort((a, b) => a - b);
     if (participants.length !== season.playoff_team_count || JSON.stringify(participants) !== JSON.stringify(seeded)) throw new Error(`Postseason bracket/seed mismatch: ${year}`);
     const postseason = { source: "ESPN championship-bracket matchups, reconciled with ESPN playoff seeds", rosterIds: participants,
-      matchups: playoffGames.map((game) => ({ matchupRef: game.matchup_ref, week: game.week, homeRosterId: game.home.team_id, awayRosterId: game.away.team_id, tier: game.playoff_tier, bracketSource: game.bracket_source })) };
+      matchups: playoffGames.map((game) => ({ matchupRef: game.matchup_ref, week: game.week, homeRosterId: game.home.team_id, awayRosterId: game.away.team_id,
+        homeOwnerId: owners.find((owner) => owner.espnKey === game.home.manager_key)?.id,
+        awayOwnerId: owners.find((owner) => owner.espnKey === game.away.manager_key)?.id,
+        homeScore: game.home.score, awayScore: game.away.score, winner: game.winner,
+        margin: Math.abs(game.home.score - game.away.score), tier: game.playoff_tier, bracketSource: game.bracket_source,
+        scorePrecision: "source-html", corrections: data.metadata.manual_overrides.filter((item) => item.matchup_ref === game.matchup_ref),
+      })) };
     const teams = sourceTeams.map((team) => {
       const owner = owners.find((item) => item.espnKey === team.manager_key);
       if (!owner) throw new Error(`Unmapped owner: ${team.owner_display}`);

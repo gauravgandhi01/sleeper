@@ -174,8 +174,8 @@ corrected championship remain preserved in the archive and API.
 
 `server/identities.js` explicitly links ESPN manager keys to stable canonical
 IDs and Sleeper user IDs. Display names and team names are never used as runtime
-identity joins. Daniel Pyo / Ethan Miller (former), present in 2018–2020, remains
-separate from the current Ethan Miller. Unrecognized live user IDs get a
+identity joins. Daniel Pyo / Ethan Miller, present in 2018–2020, remains a
+separate inactive identity from the current Ethan Miller. Unrecognized live user IDs get a
 namespaced `sleeper:` identity rather than an inferred historical match.
 
 Additional API behavior (all responses remain `no-store`):
@@ -223,6 +223,50 @@ Tests cover imported/source reconciliation, corruption rejection, owner links,
 career weighting, archived HTTP access without live data, tab/owner interactions,
 keyboard navigation, and late-response race protection. DOM tests are not a
 substitute for a visual browser check at mobile, tablet, and desktop widths.
+
+## Records and Head-to-Head
+
+Both tabs default to the 10-team era, determined by actual season team counts.
+Their era and owner selections are independent of the season selector.
+
+Records ranks finalized regular-season results in eleven categories, showing the
+top five plus everyone tied at the cutoff. Season totals and percentages include
+ongoing seasons, explicitly labeled with their number of finalized games; no
+minimum-games qualification is imposed. Win streaks follow an owner's consecutive
+qualifying regular-season games across seasons and reset on a loss or tie.
+Closest matchups include ties and appear once per game. Record links open the
+season scoreboard with the owner highlighted.
+
+Head-to-Head starts with empty owner selectors. Summaries report W–L–T, PF/PA and
+averages from Owner A's perspective. Ties reset the current series win streak.
+The comparison displays both owners side by side with muted performance shading
+and W–L records. Its All games / Regular season / Playoffs control filters both
+the comparison and matchup history, recomputing totals, averages and streaks for
+the selected stage. The choice is retained in `h2hStage=all|regular|playoff` URL
+state; the API accepts the equivalent `stage` parameter (default `all`, invalid
+values return 400). Cached results and request race protection include this stage.
+The sortable history includes finalized regular-season games and 40 scored ESPN
+championship-bracket games from 2018–2025. Byes and consolation games are excluded.
+Current Sleeper postseason and live scores are excluded. Historical playoff
+scores retain the original HTML's one-decimal precision; regular-season scores
+continue using the original API precision. The corrected 2022 final is preserved,
+including its matchup-level correction provenance and championship designation.
+Regenerating with `npm run import:history` reproduces this additional playoff data
+offline; production still needs only the bundled archive.
+
+- `GET /api/records?era=all|ten-team`: grouped records, qualifying seasons,
+  current-data availability and freshness. Default era is `ten-team`.
+- `GET /api/head-to-head?era=all|ten-team&ownerA=gaurav&ownerB=jake`:
+  owner options, summary and matchup history. Missing either owner returns an
+  empty comparison. Unknown/duplicate owners and invalid eras return 400.
+
+Shareable links: `?tab=records&recordsEra=ten-team` and
+`?tab=head-to-head&h2hEra=ten-team&ownerA=gaurav&ownerB=jake`.
+Changing tabs, seasons or refreshing preserves selections and rivalry sorting.
+Requests are race-protected, and failed updates retain only matching cached
+era/pair results. Both APIs work independently of live refreshes and serve
+historical results even when Sleeper has no usable snapshot. No browser polling
+or additional upstream requests are introduced.
 
 ## Draft board
 

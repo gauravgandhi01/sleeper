@@ -71,6 +71,20 @@ export function validateArchive(archive) {
       const ids = recap.postseason.rosterIds;
       const games = recap.postseason.matchups;
       if (!Array.isArray(ids) || new Set(ids).size !== ids.length || ids.some((id) => !snapshot.teams.some((team) => team.rosterId === id)) || !Array.isArray(games) || !games.length || games.some((game) => game.week <= snapshot.metadata.regularSeasonEnd || game.homeRosterId === game.awayRosterId || !ids.includes(game.homeRosterId) || !ids.includes(game.awayRosterId)) || ids.some((id) => !games.some((game) => game.homeRosterId === id || game.awayRosterId === id))) throw new Error("Invalid archive postseason evidence");
+      const refs = new Set();
+      for (const game of games) {
+        if (refs.has(game.matchupRef)) throw new Error("Duplicate postseason matchup");
+        refs.add(game.matchupRef);
+        // Older archives may contain appearance evidence without scored games.
+        if (game.homeScore === undefined && game.awayScore === undefined) continue;
+        const home = snapshot.teams.find((team) => team.rosterId === game.homeRosterId);
+        const away = snapshot.teams.find((team) => team.rosterId === game.awayRosterId);
+        if (![game.homeScore, game.awayScore, game.margin].every(Number.isFinite)
+          || !home.canonicalOwnerIds.includes(game.homeOwnerId) || !away.canonicalOwnerIds.includes(game.awayOwnerId)
+          || !["HOME", "AWAY", "TIE"].includes(game.winner)
+          || Math.abs(game.margin - Math.abs(game.homeScore - game.awayScore)) > 1e-8
+          || (game.homeScore !== game.awayScore && game.winner !== (game.homeScore > game.awayScore ? "HOME" : "AWAY"))) throw new Error("Invalid scored postseason matchup");
+      }
     }
     for (const row of seasonRecords(snapshot)) {
       const standing = recap.standings.find((item) => item.rosterId === row.rosterId);

@@ -5,6 +5,8 @@ import { join } from "node:path";
 import { History } from "./history.js";
 import { linkCurrentOwners } from "./identities.js";
 import { applyDisplayNames } from "./names.js";
+import { leagueRecords, headToHead } from "./records.js";
+import { OWNER_ICONS } from "../src/owner-icons.js";
 
 const root = fileURLToPath(new URL("../", import.meta.url));
 const escapeHtml = (value) => value.replaceAll("&", "&amp;").replaceAll('"', "&quot;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
@@ -41,6 +43,19 @@ export async function createApp({ service, publicBaseUrl = "http://localhost:417
     res.json(history.careers(service.saved ? linkCurrentOwners(applyDisplayNames(service.saved.snapshot)) : null, { era, currentSeason: service.saved?.snapshot.metadata.season || currentSeason, stale: service.dashboard()?.stale ?? true }));
   });
   app.get("/api/dashboard", sendDashboard);
+  for (const [path, calculate] of [["/api/records", leagueRecords], ["/api/head-to-head", headToHead]]) {
+    app.get(path, (req, res) => {
+      const era = req.query.era ?? "ten-team";
+      if (!["all", "ten-team"].includes(era)) return res.status(400).json({ error: "Era must be all or ten-team." });
+      const snapshot = service.saved ? linkCurrentOwners(applyDisplayNames(service.saved.snapshot)) : null;
+      try {
+        res.json(calculate(history.archive, snapshot, { era, stage: req.query.stage, ownerA: req.query.ownerA, ownerB: req.query.ownerB, currentSeason: snapshot?.metadata.season || currentSeason, stale: service.dashboard()?.stale ?? true }));
+      } catch (error) {
+        if (["Choose a known owner.", "Choose two different owners.", "Stage must be all, regular or playoff."].includes(error.message)) return res.status(400).json({ error: error.message });
+        throw error;
+      }
+    });
+  }
   app.post("/api/refresh", sendDashboard);
   app.get("/healthz", async (req, res) => {
     try {
@@ -49,7 +64,7 @@ export async function createApp({ service, publicBaseUrl = "http://localhost:417
     } catch { res.status(503).json({ status: "unhealthy", storage: "unavailable", dataAvailable: Boolean(service.saved) }); }
   });
   app.get("/", (req, res) => { res.set("Cache-Control", "no-cache").type("html").send(html); });
-  for (const asset of ["styles.css", "src/app.js", "src/ui.js", "src/theme.js", "logo.png", "logo_white.png", "public/favicon.svg", "public/og.png"]) {
+  for (const asset of ["styles.css", "src/app.js", "src/ui.js", "src/owner-icons.js", "src/theme.js", "logo.png", "logo_white.png", "public/favicon.svg", "public/og.png", ...Object.values(OWNER_ICONS)]) {
     app.get(`/${asset}`, (req, res) => res.sendFile(join(root, asset), { maxAge: 0 }));
   }
   app.use((req, res) => res.status(404).json({ error: "Not found" }));

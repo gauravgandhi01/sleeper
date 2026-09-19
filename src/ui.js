@@ -1,3 +1,5 @@
+import { OWNER_ICONS, OWNER_ICON_VERSIONS } from "./owner-icons.js";
+
 const COLORS = [
   "#27785b", "#d46a55", "#6676d8", "#c48b22", "#8b5fc7",
   "#2e91a3", "#b65686", "#58843c", "#a86637", "#476f95",
@@ -11,6 +13,7 @@ const uiState = {
 
 let refreshHandler = () => {};
 let seasonHandler = () => {};
+let tabHandler = () => {};
 let highlightedOwner = null;
 let ownerData = null;
 let selectedOwner = null;
@@ -66,9 +69,44 @@ function signed(value, digits = 2) {
   return `${value > 0 ? "+" : ""}${Number(value).toFixed(digits)}`;
 }
 
+function makeOwnerIcon(owner) {
+  const icon = OWNER_ICONS[owner?.id];
+  if (!icon) return null;
+  const portrait = el("img", "owner-icon");
+  const version = OWNER_ICON_VERSIONS[owner.id];
+  portrait.src = `./${icon}${version ? `?v=${version}` : ""}`;
+  portrait.alt = "";
+  portrait.width = 32;
+  portrait.height = 32;
+  portrait.loading = "lazy";
+  portrait.decoding = "async";
+  portrait.addEventListener("error", () => portrait.remove(), { once: true });
+  return portrait;
+}
+
+function compactOwner(owner) {
+  const label = el("span", "owner-icon-label");
+  const portrait = makeOwnerIcon(owner);
+  if (!portrait) { label.textContent = owner.name; return label; }
+  label.title = owner.name;
+  label.tabIndex = 0;
+  portrait.alt = owner.name;
+  portrait.addEventListener("error", () => { label.textContent = owner.name; }, { once: true });
+  label.append(portrait);
+  return label;
+}
+
 function ownerNameWithTrophies(owner, includeFormer = false) {
   const wrap = el("span", "owner-name-wrap");
-  wrap.append(document.createTextNode(`${owner?.name || "Owner career"}${includeFormer && !owner?.current ? " · Former" : ""}`));
+  const portrait = makeOwnerIcon(owner);
+  if (portrait) wrap.append(portrait);
+  wrap.append(document.createTextNode(owner?.name || "Owner career"));
+  if (includeFormer && owner && !owner.current) {
+    const former = el("span", "owner-former-marker", " 🪦");
+    former.title = "Inactive owner";
+    former.setAttribute("aria-label", "Inactive owner");
+    wrap.append(former);
+  }
   const championships = Math.max(0, Number(owner?.championships) || 0);
   if (championships) {
     const trophies = el("span", "owner-trophies", " " + "🏆".repeat(championships));
@@ -308,7 +346,7 @@ function renderTrendControls(stats) {
     const style = ownerLineStyle(team);
     const swatch = svgEl("svg", { width: 28, height: 12, "aria-hidden": "true" });
     swatch.append(svgEl("line", { x1: 0, x2: 28, y1: 6, y2: 6, stroke: style.color, "stroke-width": 3, "stroke-dasharray": style.dash }));
-    label.append(swatch, document.createTextNode(team.managerName));
+    label.append(swatch, compactOwner({ id: team.canonicalOwnerIds?.length === 1 ? team.canonicalOwnerIds[0] : null, name: team.managerName }));
     root.append(label);
   });
 }
@@ -649,9 +687,14 @@ function renderStatbook(stats) {
   renderStatbookTable(stats);
 }
 
-export function initializeUi({ onRefresh, onSeasonChange = () => {}, onOwnerEraChange = () => {} }) {
+export function initializeUi({ onRefresh, onSeasonChange = () => {}, onOwnerEraChange = () => {}, onTabChange = () => {}, onRecordsEraChange = () => {}, onRivalryChange = () => {} }) {
   refreshHandler = onRefresh;
   seasonHandler = onSeasonChange;
+  tabHandler = onTabChange;
+  byId("recordsEra").addEventListener("change", (event) => onRecordsEraChange(event.target.value));
+  const changeRivalry = (stage = rivalry.stage) => onRivalryChange({ era: byId("h2hEra").value, stage, ownerA: byId("h2hOwnerA").value, ownerB: byId("h2hOwnerB").value });
+  for (const id of ["h2hEra", "h2hOwnerA", "h2hOwnerB"]) byId(id).addEventListener("change", () => changeRivalry());
+  byId("h2hStageControls").querySelectorAll("button").forEach((button) => button.addEventListener("click", () => changeRivalry(button.dataset.stage)));
   byId("seasonSelect").addEventListener("change", (event) => seasonHandler(event.target.value));
   byId("currentOwnersOnly").addEventListener("change", () => renderOwners(ownerData));
   byId("ownerEra").addEventListener("change", (event) => onOwnerEraChange(event.target.value));
@@ -676,7 +719,7 @@ export function initializeUi({ onRefresh, onSeasonChange = () => {}, onOwnerEraC
   });
 }
 
-function activateTab(activeTab) {
+function activateTab(activeTab, notify = true) {
   document.querySelectorAll('[role="tab"]').forEach((tab) => {
     const active = tab === activeTab;
     tab.classList.toggle("active", active);
@@ -685,6 +728,13 @@ function activateTab(activeTab) {
     byId(tab.dataset.view).hidden = !active;
   });
   if (activeTab.id === "liveTab") refreshHandler();
+  if (notify) tabHandler(Object.keys(TAB_IDS).find((key) => TAB_IDS[key] === activeTab.id));
+}
+
+const TAB_IDS = { scoreboard: "overviewTab", live: "liveTab", trends: "weeklyTab", statbook: "statbookTab", owners: "ownersTab", records: "recordsTab", "head-to-head": "headToHeadTab", draft: "draftTab" };
+export function selectTab(name) {
+  const tab = byId(TAB_IDS[name] || "overviewTab");
+  activateTab(tab.hidden ? byId("overviewTab") : tab, false);
 }
 
 export function setRefreshState(isLoading) {
@@ -793,7 +843,7 @@ export function renderSeasons(catalog, selected) {
   select.value = selected;
 }
 
-export function prepareSeason(year, archived, ownerId) {
+export function prepareSeason(year, archived, ownerId, notify = true) {
   byId("seasonSelect").value = year;
   byId("brandSeason").textContent = `True League · ${year}`;
   highlightedOwner = ownerId;
@@ -801,7 +851,7 @@ export function prepareSeason(year, archived, ownerId) {
   byId("refreshButton").hidden = archived;
   const active = document.querySelector('[role="tab"][aria-selected="true"]');
   for (const id of ["liveTab", "draftTab"]) byId(id).hidden = archived;
-  if (ownerId || active?.hidden) activateTab(byId("overviewTab"));
+  if (ownerId || active?.hidden) activateTab(byId("overviewTab"), notify);
   byId("noticeRegion").replaceChildren();
 }
 
@@ -1010,4 +1060,174 @@ export function renderOwners(payload) {
 export function renderConnectionWarning() {
   byId("noticeRegion").replaceChildren(el("div", "notice", "Connection interrupted. Displayed scores have been retained; use Refresh to try again."));
   byId("dataStatus").classList.add("is-stale");
+}
+
+const recordCategories = [
+  ["highestScore", "Highest score", point], ["lowestScore", "Lowest score", point],
+  ["highestLosingScore", "Highest losing score", point], ["lowestWinningScore", "Lowest winning score", point],
+  ["biggestBlowout", "Biggest blowout", point], ["closestMatchup", "Closest matchup", point],
+  ["mostSeasonPoints", "Most points in a season", point], ["bestWinPercentage", "Best win percentage", percentage],
+  ["bestMedianWinPercentage", "Best median win percentage", percentage], ["bestCumulativeVsMedian", "Best cumulative score vs median", signed],
+  ["longestWinStreak", "Longest win streak", (value) => `${value} wins`],
+];
+let recordsEra = "ten-team";
+let rivalry = { era: "ten-team", stage: "all", ownerA: "", ownerB: "" };
+const rivalryStageLabels = { all: "All games", regular: "Regular season", playoff: "Playoffs" };
+const recordsCache = new Map();
+const rivalryCache = new Map();
+const rivalrySort = { key: "season", direction: "desc" };
+const rivalryKey = (value) => JSON.stringify([value.era, value.stage || "all", value.ownerA, value.ownerB]);
+
+function researchStatus(payload) {
+  const seasons = payload.qualifyingSeasons.map((item) => item.season).join(", ") || "No qualifying seasons";
+  const availability = !payload.currentDataAvailable ? "Current-season results unavailable; historical results are available." : payload.stale ? "Current-season results use saved data; the latest update is unavailable or overdue." : "Finalized results only.";
+  return `${payload.era === "ten-team" ? "10-team era" : "All seasons"} · ${seasons}. ${availability}`;
+}
+
+function scoreboardLink(season, ownerId, text) {
+  const link = el("a", "season-link", text);
+  link.href = `?season=${encodeURIComponent(season)}&owner=${encodeURIComponent(ownerId)}`;
+  link.addEventListener("click", (event) => {
+    if (event.button || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    event.preventDefault(); seasonHandler(season, ownerId);
+  });
+  return link;
+}
+
+export function prepareRecords(era) {
+  recordsEra = era;
+  byId("recordsEra").value = era;
+  const cached = recordsCache.get(era);
+  if (cached) renderRecords(cached);
+  else byId("recordsContent").replaceChildren();
+  byId("recordsStatus").textContent = "Loading records…";
+  byId("recordsContent").setAttribute("aria-busy", "true");
+}
+
+export function renderRecords(payload, error = null) {
+  if (payload && payload.era !== recordsEra) return;
+  byId("recordsContent").setAttribute("aria-busy", "false");
+  if (!payload) {
+    byId("recordsStatus").textContent = recordsCache.has(recordsEra) ? "Update unavailable; saved records for this era retained." : error?.message || "Records unavailable. Try opening this tab again.";
+    return;
+  }
+  recordsCache.set(recordsEra, payload);
+  byId("recordsStatus").textContent = researchStatus(payload);
+  const root = byId("recordsContent"); root.replaceChildren();
+  for (const [key, title, format] of recordCategories) {
+    const section = el("section", "record-section");
+    section.append(el("h3", "", title));
+    const list = el("ol", "record-list");
+    for (const row of payload.records[key] || []) {
+      const item = el("li", "record-row");
+      const details = el("div");
+      details.append(scoreboardLink(row.season, row.ownerId, row.ownerName), el("small", "", row.teamName));
+      details.append(el("small", "", `${row.season}${row.week ? ` · Week ${row.week}` : ` · ${row.games} games`}${row.ongoing ? " · Ongoing" : ""}`));
+      if (key === "longestWinStreak") details.append(el("small", "", `From ${row.startSeason} Week ${row.startWeek}`));
+      else if (row.opponent) details.append(el("small", "", `vs ${row.opponentOwner} · ${row.opponent} (${point(row.score)}–${point(row.opponentScore)})`));
+      item.append(el("span", "record-rank", `#${row.rank}`), details, el("strong", "record-value", format(row.value)));
+      list.append(item);
+    }
+    section.append(list.childElementCount ? list : el("p", "section-note", "No qualifying results yet."));
+    root.append(section);
+  }
+}
+
+function setOwnerOption(id, value) {
+  const select = byId(id);
+  if (value && ![...select.options].some((option) => option.value === value)) {
+    const option = el("option", "", value); option.value = value; select.append(option);
+  }
+  select.value = value;
+}
+
+export function prepareRivalry(selection) {
+  rivalry = { stage: "all", ...selection };
+  byId("h2hStageControls").querySelectorAll("button").forEach((button) => button.setAttribute("aria-pressed", String(button.dataset.stage === rivalry.stage)));
+  byId("h2hEra").value = selection.era;
+  setOwnerOption("h2hOwnerA", selection.ownerA); setOwnerOption("h2hOwnerB", selection.ownerB);
+  const cached = rivalryCache.get(rivalryKey(rivalry));
+  if (cached) renderRivalry(cached);
+  else byId("headToHeadContent").replaceChildren();
+  byId("headToHeadStatus").textContent = `Loading ${rivalryStageLabels[rivalry.stage]?.toLowerCase() || "matchup"} results…`;
+  byId("headToHeadContent").setAttribute("aria-busy", "true");
+}
+
+export function renderRivalry(payload, error = null) {
+  if (payload && (payload.era !== rivalry.era || (payload.stage || "all") !== rivalry.stage || (payload.ownerA?.id || "") !== rivalry.ownerA || (payload.ownerB?.id || "") !== rivalry.ownerB)) return;
+  const root = byId("headToHeadContent"); root.setAttribute("aria-busy", "false");
+  if (!payload) {
+    byId("headToHeadStatus").textContent = rivalryCache.has(rivalryKey(rivalry)) ? "Update unavailable; saved results for this owner pair, era and stage retained." : error?.message || "Matchup history unavailable. Try opening this tab again.";
+    return;
+  }
+  rivalryCache.set(rivalryKey(rivalry), payload);
+  for (const [id, key] of [["h2hOwnerA", "ownerA"], ["h2hOwnerB", "ownerB"]]) {
+    const empty = el("option", "", "Choose an owner"); empty.value = "";
+    byId(id).replaceChildren(empty, ...payload.owners.map((owner) => {
+      const option = el("option", "", owner.name); option.value = owner.id; return option;
+    }));
+    byId(id).value = rivalry[key];
+  }
+  byId("headToHeadStatus").textContent = researchStatus(payload);
+  root.replaceChildren();
+  if (!payload.summary) { root.append(emptyState("Choose two owners", "Select a pair to see their series record and every meeting.")); return; }
+  const { summary: s, ownerA: a, ownerB: b } = payload;
+  if (!s.games) { root.append(emptyState(rivalry.stage === "playoff" ? "No playoff meetings in this era" : "No meetings in this selection", "Try another stage, All seasons, or a different owner pair.")); return; }
+  const scope = rivalry.stage === "playoff" ? "Archived ESPN championship-bracket games only." : rivalry.stage === "regular" ? "Finalized regular-season games only." : "Regular-season games and archived ESPN championship-bracket meetings.";
+  root.append(el("h3", "", `${a.name} vs ${b.name}`), el("p", "section-note rivalry-scope", `${rivalryStageLabels[rivalry.stage]} · ${s.games} ${s.games === 1 ? "meeting" : "meetings"}. ${scope}`));
+  const best = (game) => game ? `${point(game.margin)} · ${game.season} W${game.week}` : "—";
+  const streak = s.currentStreak.count * (s.currentStreak.ownerId === a.id ? 1 : -1);
+  const metrics = [
+    { label: "Series record", values: [s.wins, s.losses], display: [`${s.wins}–${s.losses}`, `${s.losses}–${s.wins}`], color: "range", help: "Wins–losses against the other owner. More wins are shaded green." },
+    { label: "Win percentage", values: [(s.wins + s.ties / 2) / s.games, (s.losses + s.ties / 2) / s.games], format: percentage, color: "percent", help: "Ties count as half a win; 50% is neutral." },
+    { label: "Games", values: [s.games, s.games], format: integer },
+    { label: "Points for", values: [s.pointsFor, s.pointsAgainst], format: point, color: "range", help: "Total points scored in this rivalry; higher is green." },
+    { label: "Points against", values: [s.pointsAgainst, s.pointsFor], format: point, color: "inverse", help: "Total opponent points in this rivalry; lower is green." },
+    { label: "Average PF", values: [s.averagePointsFor, s.averagePointsAgainst], format: point, color: "range", help: "Points scored per meeting; higher is green." },
+    { label: "Average PA", values: [s.averagePointsAgainst, s.averagePointsFor], format: point, color: "inverse", help: "Opponent points per meeting; lower is green." },
+    { label: "Point differential", values: [s.pointDifferential, -s.pointDifferential], format: signed, color: "zero", help: "Points for minus points against. Zero is neutral." },
+    { label: "Biggest win", values: [s.biggestWinA?.margin, s.biggestWinB?.margin], display: [best(s.biggestWinA), best(s.biggestWinB)], color: "range", help: "Each owner's largest winning margin, with season and week. A dash means no wins." },
+    { label: "Closest game", values: [s.closestGame?.margin, s.closestGame?.margin], display: [best(s.closestGame), best(s.closestGame)] },
+    { label: "Playoff meetings", values: [s.playoffMeetings, s.playoffMeetings], format: integer },
+    { label: "Current streak", values: [streak, -streak], format: (value) => value ? `${Math.abs(value)} ${value > 0 ? "W" : "L"}` : "—", color: "zero", help: "Consecutive wins or losses against this owner; ties reset both streaks." },
+  ].filter((metric) => metric.label !== "Playoff meetings" || rivalry.stage === "all");
+  const comparison = simpleTable(["Metric", a.name, b.name], metrics.map((metric) => [metric.label, ...(metric.display || metric.values.map((value) => metric.format(value)))]), "Owner head-to-head comparison");
+  comparison.classList.add("rivalry-comparison");
+  comparison.querySelectorAll("thead th").forEach((th, index) => {
+    if (index) th.replaceChildren(ownerNameWithTrophies(index === 1 ? a : b));
+  });
+  comparison.querySelectorAll("tbody tr").forEach((tr, index) => {
+    const metric = metrics[index];
+    if (metric.help) { tr.firstChild.title = metric.help; tr.firstChild.tabIndex = 0; tr.firstChild.setAttribute("aria-label", `${metric.label}: ${metric.help}`); }
+    [...tr.children].slice(1).forEach((cell, ownerIndex) => colorPerformance(cell, metric.values[ownerIndex], { key: "value", color: metric.color }, metric.values.map((value) => ({ value }))));
+  });
+  root.append(comparison);
+  if (payload.matchups.some((game) => game.scorePrecision === "source-html")) root.append(el("p", "section-note", "Archived playoff scores retain the source dashboard's one-decimal precision. Regular-season scores retain API precision."));
+  const columns = [
+    { key: "season", label: "Season", value: (row) => Number(row.season), render: (row) => scoreboardLink(row.season, a.id, row.season) },
+    { key: "week", label: "Week", value: (row) => row.week },
+    { key: "stage", label: "Stage", value: (row) => row.stage, render: (row) => row.stage === "playoff" ? "Playoffs" : "Regular season" },
+    ...[["ownerA", a], ["ownerB", b]].map(([key, owner]) => ({ key, label: owner.name, value: (row) => row[key].score, render: (row) => {
+      const cell = el("span", "", point(row[key].score)); cell.append(el("small", "", row[key].teamName)); return cell;
+    } })),
+    { key: "winner", label: "Winner", value: (row) => row.winnerId === a.id ? a.name : row.winnerId === b.id ? b.name : "Tie", render: (row) => row.winnerId ? compactOwner(row.winnerId === a.id ? a : b) : "Tie" },
+    { key: "margin", label: "Margin", value: (row) => row.margin, render: (row) => point(row.margin) },
+  ];
+  const sortColumn = columns.find((column) => column.key === rivalrySort.key);
+  const rows = [...payload.matchups].sort((a, b) => {
+    const av = sortColumn.value(a), bv = sortColumn.value(b);
+    const order = typeof av === "string" ? av.localeCompare(bv) : av - bv;
+    return (rivalrySort.direction === "asc" ? order : -order) || Number(b.season) - Number(a.season) || b.week - a.week || a.id.localeCompare(b.id);
+  });
+  const table = simpleTable(columns.map((column) => column.label), rows.map((row) => columns.map((column) => column.render ? column.render(row) : column.value(row))), "Head-to-head matchup history");
+  table.classList.add("rivalry-table");
+  table.querySelectorAll("thead th").forEach((th, index) => {
+    const column = columns[index];
+    th.replaceChildren(sortButton(column.label, column.key, rivalrySort, (next) => {
+      Object.assign(rivalrySort, next); renderRivalry(payload);
+      byId("headToHeadContent").querySelectorAll("thead th button")[index]?.focus();
+    }));
+    th.setAttribute("aria-sort", rivalrySort.key === column.key ? rivalrySort.direction === "asc" ? "ascending" : "descending" : "none");
+  });
+  root.append(table);
 }

@@ -368,7 +368,7 @@ h2 { max-width: 640px; font-size: clamp(1.45rem, 3vw, 2.35rem); }
 .matrix-live-label { display: block; margin-top: 2px; color: var(--accent-soft); font-size: .56rem; letter-spacing: .08em; }
 .matrix-live-cell { box-shadow: inset 2px 0 0 var(--line), inset -2px 0 0 var(--line); }
 .matrix-table tbody td.matrix-scored { position: relative; background-color: color-mix(in srgb, var(--score-color) var(--score-shade), var(--panel)); }
-.matrix-above-median { font-weight: 850; box-shadow: inset 0 -3px 0 var(--ink); }
+.matrix-above-median { font-weight: 850; }
 .matrix-median-marker { position: absolute; right: 2px; top: 1px; font-size: .75rem; font-weight: 900; line-height: 1; color: var(--ink); }
 .matrix-ranked { position: relative; }
 .matrix-rank { position: absolute; left: 3px; bottom: 4px; color: var(--ink); font-size: .55rem; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; }
@@ -541,6 +541,27 @@ h2 { max-width: 640px; font-size: clamp(1.45rem, 3vw, 2.35rem); }
   font-size: .82rem;
 }
 .season-control select { max-width: 155px; }
+.research-control select { max-width: 100%; }
+.records-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); gap: 18px; margin-top: 20px; }
+.record-section { border: 1px solid var(--line); border-radius: 14px; padding: 18px; min-width: 0; }
+.record-section h3 { margin: 0 0 12px; font-size: 1rem; }
+.record-list { padding: 0; margin: 0; list-style: none; }
+.record-row { display: grid; grid-template-columns: 24px minmax(0, 1fr) auto; align-items: start; gap: 8px; padding: 12px 0; border-top: 1px solid var(--line); }
+.record-row small { display: block; color: var(--muted); overflow-wrap: anywhere; margin-top: 4px; }
+.record-rank { color: var(--muted); font-size: .8rem; }
+.record-value { font-variant-numeric: tabular-nums; }
+.rivalry-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; margin: 22px 0; }
+.rivalry-controls label { display: grid; gap: 8px; flex: 1 1 200px; }
+.rivalry-controls select { width: 100%; }
+.rivalry-comparison { margin: 20px 0; }
+.rivalry-comparison table { table-layout: fixed; }
+.rivalry-comparison .data-table th, .rivalry-comparison .data-table td { width: 35%; white-space: normal; overflow-wrap: anywhere; text-align: center; }
+.rivalry-comparison .data-table th:first-child { width: 30%; text-align: left; }
+.rivalry-comparison thead th:not(:first-child) { color: var(--ink); font-size: .9rem; text-transform: none; letter-spacing: normal; }
+@media (max-width: 640px) {
+  .rivalry-comparison .data-table th, .rivalry-comparison .data-table td { padding: 10px 7px; font-size: .78rem; }
+}
+.rivalry-table td small { display: block; color: var(--muted); white-space: normal; min-width: 110px; }
 .season-control { flex: 0 0 auto; }
 .archive-recap { margin-bottom: 18px; }
 .archive-recap h2 { font-size: 1.15rem; }
@@ -550,6 +571,16 @@ h2 { max-width: 640px; font-size: clamp(1.45rem, 3vw, 2.35rem); }
 .owner-title { margin: 20px 0 8px; }
 .owner-button { border: 0; background: none; color: var(--ink); padding: 8px 0; font: inherit; text-align: left; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
 .owner-name-wrap { display: inline-flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+.owner-icon { display: inline-block; width: 32px; height: 32px; flex: 0 0 auto; object-fit: contain; border-radius: 8px; border: 1px solid var(--line); margin-right: 5px; }
+.owner-icon-label { display: inline-flex; align-items: center; vertical-align: middle; }
+.owner-icon-label .owner-icon { margin-right: 0; }
+.owner-icon-label:focus-visible { outline: 2px solid var(--accent-soft); outline-offset: 3px; border-radius: 8px; }
+.rivalry-table td:nth-child(6), .rivalry-table th:nth-child(6) { text-align: center; }
+.rivalry-table th:nth-child(6) .sort-button { justify-content: center; }
+#ownersContent .owner-icon { width: 44px; height: 44px; border-radius: 10px; margin-right: 8px; }
+#ownersContent .owner-title .owner-icon { width: 60px; height: 60px; border-radius: 12px; }
+.rivalry-comparison .owner-name-wrap { justify-content: center; gap: 8px; }
+.rivalry-comparison .owner-icon { width: 40px; height: 40px; margin-right: 0; }
 .owner-trophies { white-space: nowrap; font-size: .95em; text-decoration: none; }
 .season-link { color: var(--ink); text-underline-offset: 3px; }
 .matrix-table .owner-highlight td { border-top: 2px solid var(--accent); border-bottom: 2px solid var(--accent); }

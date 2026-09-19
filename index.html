@@ -69,6 +69,8 @@
       <button class="section-tab" id="weeklyTab" type="button" role="tab" aria-selected="false" aria-controls="weeklyView" data-view="weeklyView">Trends</button>
       <button class="section-tab" id="statbookTab" type="button" role="tab" aria-selected="false" aria-controls="statbookView" data-view="statbookView">Stat book</button>
       <button class="section-tab" id="ownersTab" type="button" role="tab" aria-selected="false" aria-controls="ownersView" data-view="ownersView" tabindex="-1">Owners</button>
+      <button class="section-tab" id="recordsTab" type="button" role="tab" aria-selected="false" aria-controls="recordsView" data-view="recordsView" tabindex="-1">Records</button>
+      <button class="section-tab" id="headToHeadTab" type="button" role="tab" aria-selected="false" aria-controls="headToHeadView" data-view="headToHeadView" tabindex="-1">Head-to-Head</button>
       <button class="section-tab" id="draftTab" type="button" role="tab" aria-selected="false" aria-controls="draftView" data-view="draftView" tabindex="-1">Draft Board</button>
     </nav>
 
@@ -101,6 +103,37 @@
         <p id="ownerEraSummary" class="section-note"></p>
         <div id="ownersStatus" role="status"></div>
         <div id="ownersContent"></div>
+      </section>
+    </section>
+    <section id="recordsView" class="dashboard-view" role="tabpanel" aria-labelledby="recordsTab" hidden>
+      <section class="panel section-panel" aria-labelledby="recordsTitle">
+        <div class="section-heading compact">
+          <div><p class="eyebrow accent">League record book</p><h2 id="recordsTitle">Records</h2></div>
+          <label class="theme-control research-control">Era <select id="recordsEra" aria-label="Records era"><option value="ten-team">10-team era</option><option value="all">All seasons</option></select></label>
+        </div>
+        <p class="section-note">Finalized regular-season games. Top five in each category, including ties. Ongoing seasons are labeled; win streaks can span seasons within the selected era.</p>
+        <p id="recordsStatus" class="section-note" role="status"></p>
+        <div id="recordsContent" class="records-grid"></div>
+      </section>
+    </section>
+    <section id="headToHeadView" class="dashboard-view" role="tabpanel" aria-labelledby="headToHeadTab" hidden>
+      <section class="panel section-panel" aria-labelledby="headToHeadTitle">
+        <div class="section-heading compact">
+          <div><p class="eyebrow accent">Owner rivalries</p><h2 id="headToHeadTitle">Head-to-Head</h2></div>
+          <label class="theme-control research-control">Era <select id="h2hEra" aria-label="Head-to-head era"><option value="ten-team">10-team era</option><option value="all">All seasons</option></select></label>
+        </div>
+        <div class="rivalry-controls">
+          <label class="theme-control research-control">Owner A <select id="h2hOwnerA" aria-label="Owner A"><option value="">Choose an owner</option></select></label>
+          <span aria-hidden="true">vs</span>
+          <label class="theme-control research-control">Owner B <select id="h2hOwnerB" aria-label="Owner B"><option value="">Choose an owner</option></select></label>
+        </div>
+        <div id="h2hStageControls" class="segmented-control" role="group" aria-label="Matchup stage">
+          <button class="segment-button" type="button" data-stage="all" aria-pressed="true">All games</button>
+          <button class="segment-button" type="button" data-stage="regular" aria-pressed="false">Regular season</button>
+          <button class="segment-button" type="button" data-stage="playoff" aria-pressed="false">Playoffs</button>
+        </div>
+        <p id="headToHeadStatus" class="section-note" role="status"></p>
+        <div id="headToHeadContent"></div>
       </section>
     </section>
     <section id="liveView" class="dashboard-view" role="tabpanel" aria-labelledby="liveTab" hidden>

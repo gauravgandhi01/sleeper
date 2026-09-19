@@ -11,7 +11,7 @@ export const owners = [
   ["ben", "Ben Dross", "569E4D3A-028D-40F9-9E4D-3A028D30F977", "1091583031988600832"],
   ["ethan", "Ethan Miller", "A6004BB1-E7D6-4D5F-83DA-50A033574129", "1122221862504796160"],
   ["cameron", "Cameron Miller", "D1EEDEA8-F6A8-4E29-AEDE-A8F6A86E29F2", "1400182380202897408"],
-  ["pyo-ethan-former", "Daniel Pyo / Ethan Miller (former)", "A21F6FA2-017B-48FD-9F6F-A2017B98FD12}+{E85F97AF-79BE-4E05-9F97-AF79BEDE0565", null],
+  ["pyo-ethan-former", "Daniel Pyo / Ethan Miller", "A21F6FA2-017B-48FD-9F6F-A2017B98FD12}+{E85F97AF-79BE-4E05-9F97-AF79BEDE0565", null],
   ["ben-stanish", "Ben Stanish", "6D47F049-4C8F-4067-87F0-494C8F80679B", null],
   ["zane", "Zane Begun", "DF8756B4-B134-43D2-8756-B4B134A3D2C8", null],
 ].map(([id, name, espnId, sleeperId]) => ({ id, name, espnKey: `owner:{${espnId}}`, sleeperId }));

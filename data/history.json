@@ -210,9 +210,9 @@
               "{E85F97AF-79BE-4E05-9F97-AF79BEDE0565}"
             ],
             "managerNames": [
-              "Daniel Pyo / Ethan Miller (former)"
+              "Daniel Pyo / Ethan Miller"
             ],
-            "managerName": "Daniel Pyo / Ethan Miller (former)",
+            "managerName": "Daniel Pyo / Ethan Miller",
             "teamName": "The Team",
             "avatarUrl": null
           }
@@ -1346,7 +1346,7 @@
           {
             "rosterId": 12,
             "teamName": "The Team",
-            "managerName": "Daniel Pyo / Ethan Miller (former)",
+            "managerName": "Daniel Pyo / Ethan Miller",
             "finalRank": 9,
             "isChampion": false,
             "championNote": "",
@@ -1412,40 +1412,80 @@
               "week": 14,
               "homeRosterId": 10,
               "awayRosterId": 8,
+              "homeOwnerId": "zach",
+              "awayOwnerId": "jake",
+              "homeScore": 87.1,
+              "awayScore": 122.2,
+              "winner": "AWAY",
+              "margin": 35.10000000000001,
               "tier": "WINNERS_BRACKET",
-              "bracketSource": "espn_tier"
+              "bracketSource": "espn_tier",
+              "scorePrecision": "source-html",
+              "corrections": []
             },
             {
               "matchupRef": "2018:14:81",
               "week": 14,
               "homeRosterId": 6,
               "awayRosterId": 1,
+              "homeOwnerId": "harrison",
+              "awayOwnerId": "ben",
+              "homeScore": 77.7,
+              "awayScore": 103.4,
+              "winner": "AWAY",
+              "margin": 25.700000000000003,
               "tier": "WINNERS_BRACKET",
-              "bracketSource": "espn_tier"
+              "bracketSource": "espn_tier",
+              "scorePrecision": "source-html",
+              "corrections": []
             },
             {
               "matchupRef": "2018:15:86",
               "week": 15,
               "homeRosterId": 7,
               "awayRosterId": 8,
+              "homeOwnerId": "ethan",
+              "awayOwnerId": "jake",
+              "homeScore": 84.5,
+              "awayScore": 85.6,
+              "winner": "AWAY",
+              "margin": 1.0999999999999943,
               "tier": "WINNERS_BRACKET",
-              "bracketSource": "espn_tier"
+              "bracketSource": "espn_tier",
+              "scorePrecision": "source-html",
+              "corrections": []
             },
             {
               "matchupRef": "2018:15:87",
               "week": 15,
               "homeRosterId": 2,
               "awayRosterId": 1,
+              "homeOwnerId": "dylan",
+              "awayOwnerId": "ben",
+              "homeScore": 119.5,
+              "awayScore": 83.5,
+              "winner": "HOME",
+              "margin": 36,
               "tier": "WINNERS_BRACKET",
-              "bracketSource": "espn_tier"
+              "bracketSource": "espn_tier",
+              "scorePrecision": "source-html",
+              "corrections": []
             },
             {
               "matchupRef": "2018:16:92",
               "week": 16,
               "homeRosterId": 2,
               "awayRosterId": 8,
+              "homeOwnerId": "dylan",
+              "awayOwnerId": "jake",
+              "homeScore": 112.5,
+              "awayScore": 138.4,
+              "winner": "AWAY",
+              "margin": 25.900000000000006,
               "tier": "WINNERS_BRACKET",
-              "bracketSource": "espn_tier"
+              "bracketSource": "espn_tier",
+              "scorePrecision": "source-html",
+              "corrections": []
             }
           ]
         },
@@ -1654,9 +1694,9 @@
               "{E85F97AF-79BE-4E05-9F97-AF79BEDE0565}"
             ],
             "managerNames": [
-              "Daniel Pyo / Ethan Miller (former)"
+              "Daniel Pyo / Ethan Miller"
             ],
-            "managerName": "Daniel Pyo / Ethan Miller (former)",
+            "managerName": "Daniel Pyo / Ethan Miller",
             "teamName": "Bench Players And Mark",
             "avatarUrl": null
           }
@@ -2803,7 +2843,7 @@
           {
             "rosterId": 12,
             "teamName": "Bench Players And Mark",
-            "managerName": "Daniel Pyo / Ethan Miller (former)",
+            "managerName": "Daniel Pyo / Ethan Miller",
             "finalRank": 10,
             "isChampion": false,
             "championNote": "",
@@ -2856,40 +2896,80 @@
               "week": 14,
               "homeRosterId": 6,
               "awayRosterId": 7,
+              "homeOwnerId": "harrison",
+              "awayOwnerId": "ethan",
+              "homeScore": 114.4,
+              "awayScore": 116.4,
+              "winner": "AWAY",
+              "margin": 2,
               "tier": "WINNERS_BRACKET",
-              "bracketSource": "espn_tier"
+              "bracketSource": "espn_tier",
+              "scorePrecision": "source-html",
+              "corrections": []
             },
             {
               "matchupRef": "2019:14:81",
               "week": 14,
               "homeRosterId": 2,
               "awayRosterId": 1,
+              "homeOwnerId": "dylan",
+              "awayOwnerId": "ben",
+              "homeScore": 96.5,
+              "awayScore": 68.3,
+              "winner": "HOME",
+              "margin": 28.200000000000003,
               "tier": "WINNERS_BRACKET",
-              "bracketSource": "espn_tier"
+              "bracketSource": "espn_tier",
+              "scorePrecision": "source-html",
+              "corrections": []
             },
             {
               "matchupRef": "2019:15:86",
               "week": 15,
               "homeRosterId": 8,
               "awayRosterId": 7,
+              "homeOwnerId": "jake",
+              "awayOwnerId": "ethan",
+              "homeScore": 135.6,
+              "awayScore": 94.7,
+              "winner": "HOME",
+              "margin": 40.89999999999999,
               "tier": "WINNERS_BRACKET",
-              "bracketSource": "espn_tier"
+              "bracketSource": "espn_tier",
+              "scorePrecision": "source-html",
+              "corrections": []
             },
             {
               "matchupRef": "2019:15:87",
               "week": 15,
               "homeRosterId": 11,
               "awayRosterId": 2,
+              "homeOwnerId": "kyle",
+              "awayOwnerId": "dylan",
+              "homeScore": 101.9,
+              "awayScore": 104,
+              "winner": "AWAY",
+              "margin": 2.0999999999999943,
               "tier": "WINNERS_BRACKET",
-              "bracketSource": "espn_tier"
+              "bracketSource": "espn_tier",
+              "scorePrecision": "source-html",
+              "corrections": []
             },
             {
               "matchupRef": "2019:16:92",
               "week": 16,
               "homeRosterId": 8,
               "awayRosterId": 2,
+              "homeOwnerId": "jake",
+              "awayOwnerId": "dylan",
+              "homeScore": 131.2,
+              "awayScore": 80.8,
+              "winner": "HOME",
+              "margin": 50.39999999999999,
               "tier": "WINNERS_BRACKET",
-              "bracketSource": "espn_tier"
+              "bracketSource": "espn_tier",
+              "scorePrecision": "source-html",
+              "corrections": []
             }
           ]
         },
@@ -3097,9 +3177,9 @@
               "{E85F97AF-79BE-4E05-9F97-AF79BEDE0565}"
             ],
             "managerNames": [
-              "Daniel Pyo / Ethan Miller (former)"
+              "Daniel Pyo / Ethan Miller"
             ],
-            "managerName": "Daniel Pyo / Ethan Miller (former)",
+            "managerName": "Daniel Pyo / Ethan Miller",
             "teamName": "Bench Players And Mark",
             "avatarUrl": null
           }
@@ -4259,7 +4339,7 @@
           {
             "rosterId": 12,
             "teamName": "Bench Players And Mark",
-            "managerName": "Daniel Pyo / Ethan Miller (former)",
+            "managerName": "Daniel Pyo / Ethan Miller",
             "finalRank": 11,
             "isChampion": false,
             "championNote": "",
@@ -4299,40 +4379,80 @@
               "week": 14,
               "homeRosterId": 10,
               "awayRosterId": 4,
+              "homeOwnerId": "zach",
+              "awayOwnerId": "gaurav",
+              "homeScore": 114,
+              "awayScore": 150.8,
+              "winner": "AWAY",
+              "margin": 36.80000000000001,
               "tier": "WINNERS_BRACKET",
-              "bracketSource": "espn_tier"
+              "bracketSource": "espn_tier",
+              "scorePrecision": "source-html",
+              "corrections": []
             },
             {
               "matchupRef": "2020:14:81",
               "week": 14,
               "homeRosterId": 5,
               "awayRosterId": 2,
+              "homeOwnerId": "cameron",
+              "awayOwnerId": "dylan",
+              "homeScore": 74.7,
+              "awayScore": 90.3,
+              "winner": "AWAY",
+              "margin": 15.599999999999994,
               "tier": "WINNERS_BRACKET",
-              "bracketSource": "espn_tier"
+              "bracketSource": "espn_tier",
+              "scorePrecision": "source-html",
+              "corrections": []
             },
             {
               "matchupRef": "2020:15:86",
               "week": 15,
               "homeRosterId": 8,
               "awayRosterId": 4,
+              "homeOwnerId": "jake",
+              "awayOwnerId": "gaurav",
+              "homeScore": 133.3,
+              "awayScore": 118.2,
+              "winner": "HOME",
+              "margin": 15.100000000000009,
               "tier": "WINNERS_BRACKET",
-              "bracketSource": "espn_tier"
+              "bracketSource": "espn_tier",
+              "scorePrecision": "source-html",
+              "corrections": []
             },
             {
               "matchupRef": "2020:15:87",
               "week": 15,
               "homeRosterId": 1,
               "awayRosterId": 2,
+              "homeOwnerId": "ben",
+              "awayOwnerId": "dylan",
+              "homeScore": 155.1,
+              "awayScore": 127.7,
+              "winner": "HOME",
+              "margin": 27.39999999999999,
               "tier": "WINNERS_BRACKET",
-              "bracketSource": "espn_tier"
+              "bracketSource": "espn_tier",
+              "scorePrecision": "source-html",
+              "corrections": []
             },
             {
               "matchupRef": "2020:16:92",
               "week": 16,
               "homeRosterId": 8,
               "awayRosterId": 1,
+              "homeOwnerId": "jake",
+              "awayOwnerId": "ben",
+              "homeScore": 166.5,
+              "awayScore": 144.9,
+              "winner": "HOME",
+              "margin": 21.599999999999994,
               "tier": "WINNERS_BRACKET",
-              "bracketSource": "espn_tier"
+              "bracketSource": "espn_tier",
+              "scorePrecision": "source-html",
+              "corrections": []
             }
           ]
         },
@@ -5820,40 +5940,80 @@
               "week": 15,
               "homeRosterId": 5,
               "awayRosterId": 4,
+              "homeOwnerId": "cameron",
+              "awayOwnerId": "gaurav",
+              "homeScore": 100.3,
+              "awayScore": 106,
+              "winner": "AWAY",
+              "margin": 5.700000000000003,
               "tier": "WINNERS_BRACKET",
-              "bracketSource": "espn_tier"
+              "bracketSource": "espn_tier",
+              "scorePrecision": "source-html",
+              "corrections": []
             },
             {
               "matchupRef": "2021:15:87",
               "week": 15,
               "homeRosterId": 8,
               "awayRosterId": 3,
+              "homeOwnerId": "jake",
+              "awayOwnerId": "will",
+              "homeScore": 121.6,
+              "awayScore": 88.9,
+              "winner": "HOME",
+              "margin": 32.69999999999999,
               "tier": "WINNERS_BRACKET",
-              "bracketSource": "espn_tier"
+              "bracketSource": "espn_tier",
+              "scorePrecision": "source-html",
+              "corrections": []
             },
             {
               "matchupRef": "2021:16:92",
               "week": 16,
               "homeRosterId": 9,
               "awayRosterId": 4,
+              "homeOwnerId": "alex",
+              "awayOwnerId": "gaurav",
+              "homeScore": 100,
+              "awayScore": 120.3,
+              "winner": "AWAY",
+              "margin": 20.299999999999997,
               "tier": "WINNERS_BRACKET",
-              "bracketSource": "espn_tier"
+              "bracketSource": "espn_tier",
+              "scorePrecision": "source-html",
+              "corrections": []
             },
             {
               "matchupRef": "2021:16:93",
               "week": 16,
               "homeRosterId": 11,
               "awayRosterId": 8,
+              "homeOwnerId": "kyle",
+              "awayOwnerId": "jake",
+              "homeScore": 99.9,
+              "awayScore": 99.5,
+              "winner": "HOME",
+              "margin": 0.4000000000000057,
               "tier": "WINNERS_BRACKET",
-              "bracketSource": "espn_tier"
+              "bracketSource": "espn_tier",
+              "scorePrecision": "source-html",
+              "corrections": []
             },
             {
               "matchupRef": "2021:17:98",
               "week": 17,
               "homeRosterId": 11,
               "awayRosterId": 4,
+              "homeOwnerId": "kyle",
+              "awayOwnerId": "gaurav",
+              "homeScore": 101,
+              "awayScore": 99.8,
+              "winner": "HOME",
+              "margin": 1.2000000000000028,
               "tier": "WINNERS_BRACKET",
-              "bracketSource": "espn_tier"
+              "bracketSource": "espn_tier",
+              "scorePrecision": "source-html",
+              "corrections": []
             }
           ]
         },
@@ -7341,40 +7501,94 @@
               "week": 15,
               "homeRosterId": 3,
               "awayRosterId": 4,
+              "homeOwnerId": "will",
+              "awayOwnerId": "gaurav",
+              "homeScore": 82.1,
+              "awayScore": 102.1,
+              "winner": "AWAY",
+              "margin": 20,
               "tier": "WINNERS_BRACKET",
-              "bracketSource": "espn_tier"
+              "bracketSource": "espn_tier",
+              "scorePrecision": "source-html",
+              "corrections": []
             },
             {
               "matchupRef": "2022:15:87",
               "week": 15,
               "homeRosterId": 6,
               "awayRosterId": 10,
+              "homeOwnerId": "harrison",
+              "awayOwnerId": "zach",
+              "homeScore": 74.9,
+              "awayScore": 112.8,
+              "winner": "AWAY",
+              "margin": 37.89999999999999,
               "tier": "WINNERS_BRACKET",
-              "bracketSource": "espn_tier"
+              "bracketSource": "espn_tier",
+              "scorePrecision": "source-html",
+              "corrections": []
             },
             {
               "matchupRef": "2022:16:92",
               "week": 16,
               "homeRosterId": 2,
               "awayRosterId": 4,
+              "homeOwnerId": "dylan",
+              "awayOwnerId": "gaurav",
+              "homeScore": 81.6,
+              "awayScore": 113.5,
+              "winner": "AWAY",
+              "margin": 31.900000000000006,
               "tier": "WINNERS_BRACKET",
-              "bracketSource": "espn_tier"
+              "bracketSource": "espn_tier",
+              "scorePrecision": "source-html",
+              "corrections": []
             },
             {
               "matchupRef": "2022:16:93",
               "week": 16,
               "homeRosterId": 9,
               "awayRosterId": 10,
+              "homeOwnerId": "alex",
+              "awayOwnerId": "zach",
+              "homeScore": 126.2,
+              "awayScore": 118.1,
+              "winner": "HOME",
+              "margin": 8.100000000000009,
               "tier": "WINNERS_BRACKET",
-              "bracketSource": "espn_tier"
+              "bracketSource": "espn_tier",
+              "scorePrecision": "source-html",
+              "corrections": []
             },
             {
               "matchupRef": "2022:17:98",
               "week": 17,
               "homeRosterId": 9,
               "awayRosterId": 4,
+              "homeOwnerId": "alex",
+              "awayOwnerId": "gaurav",
+              "homeScore": 52.1,
+              "awayScore": 54,
+              "winner": "AWAY",
+              "margin": 1.8999999999999986,
               "tier": "WINNERS_BRACKET",
-              "bracketSource": "espn_tier"
+              "bracketSource": "espn_tier",
+              "scorePrecision": "source-html",
+              "corrections": [
+                {
+                  "type": "matchup_result",
+                  "status": "applied",
+                  "matchup_ref": "2022:17:98",
+                  "year": 2022,
+                  "week": 17,
+                  "away_team": "DJ, Moore Bas‎s!",
+                  "home_team": "Sword D*ck",
+                  "away_score": 54,
+                  "home_score": 52.1,
+                  "winner": "AWAY",
+                  "note": "Manual True League finals correction: award 2022 championship game to DJ, Moore Bas‎s! over Sword D*ck."
+                }
+              ]
             }
           ]
         },
@@ -8659,40 +8873,80 @@
               "week": 15,
               "homeRosterId": 10,
               "awayRosterId": 5,
+              "homeOwnerId": "zach",
+              "awayOwnerId": "cameron",
+              "homeScore": 115.5,
+              "awayScore": 97.9,
+              "winner": "HOME",
+              "margin": 17.599999999999994,
               "tier": "WINNERS_BRACKET",
-              "bracketSource": "espn_tier"
+              "bracketSource": "espn_tier",
+              "scorePrecision": "source-html",
+              "corrections": []
             },
             {
               "matchupRef": "2023:15:73",
               "week": 15,
               "homeRosterId": 8,
               "awayRosterId": 3,
+              "homeOwnerId": "jake",
+              "awayOwnerId": "will",
+              "homeScore": 149,
+              "awayScore": 123.6,
+              "winner": "HOME",
+              "margin": 25.400000000000006,
               "tier": "WINNERS_BRACKET",
-              "bracketSource": "espn_tier"
+              "bracketSource": "espn_tier",
+              "scorePrecision": "source-html",
+              "corrections": []
             },
             {
               "matchupRef": "2023:16:77",
               "week": 16,
               "homeRosterId": 4,
               "awayRosterId": 10,
+              "homeOwnerId": "gaurav",
+              "awayOwnerId": "zach",
+              "homeScore": 139.7,
+              "awayScore": 145.1,
+              "winner": "AWAY",
+              "margin": 5.400000000000006,
               "tier": "WINNERS_BRACKET",
-              "bracketSource": "espn_tier"
+              "bracketSource": "espn_tier",
+              "scorePrecision": "source-html",
+              "corrections": []
             },
             {
               "matchupRef": "2023:16:78",
               "week": 16,
               "homeRosterId": 9,
               "awayRosterId": 8,
+              "homeOwnerId": "alex",
+              "awayOwnerId": "jake",
+              "homeScore": 123.8,
+              "awayScore": 144.3,
+              "winner": "AWAY",
+              "margin": 20.500000000000014,
               "tier": "WINNERS_BRACKET",
-              "bracketSource": "espn_tier"
+              "bracketSource": "espn_tier",
+              "scorePrecision": "source-html",
+              "corrections": []
             },
             {
               "matchupRef": "2023:17:82",
               "week": 17,
               "homeRosterId": 8,
               "awayRosterId": 10,
+              "homeOwnerId": "jake",
+              "awayOwnerId": "zach",
+              "homeScore": 107.3,
+              "awayScore": 129.9,
+              "winner": "AWAY",
+              "margin": 22.60000000000001,
               "tier": "WINNERS_BRACKET",
-              "bracketSource": "espn_tier"
+              "bracketSource": "espn_tier",
+              "scorePrecision": "source-html",
+              "corrections": []
             }
           ]
         },
@@ -9954,40 +10208,80 @@
               "week": 15,
               "homeRosterId": 6,
               "awayRosterId": 3,
+              "homeOwnerId": "harrison",
+              "awayOwnerId": "will",
+              "homeScore": 139.5,
+              "awayScore": 127.2,
+              "winner": "HOME",
+              "margin": 12.299999999999997,
               "tier": "WINNERS_BRACKET",
-              "bracketSource": "espn_tier"
+              "bracketSource": "espn_tier",
+              "scorePrecision": "source-html",
+              "corrections": []
             },
             {
               "matchupRef": "2024:15:73",
               "week": 15,
               "homeRosterId": 8,
               "awayRosterId": 4,
+              "homeOwnerId": "jake",
+              "awayOwnerId": "gaurav",
+              "homeScore": 163.9,
+              "awayScore": 111.8,
+              "winner": "HOME",
+              "margin": 52.10000000000001,
               "tier": "WINNERS_BRACKET",
-              "bracketSource": "espn_tier"
+              "bracketSource": "espn_tier",
+              "scorePrecision": "source-html",
+              "corrections": []
             },
             {
               "matchupRef": "2024:16:77",
               "week": 16,
               "homeRosterId": 9,
               "awayRosterId": 6,
+              "homeOwnerId": "alex",
+              "awayOwnerId": "harrison",
+              "homeScore": 114.8,
+              "awayScore": 139.7,
+              "winner": "AWAY",
+              "margin": 24.89999999999999,
               "tier": "WINNERS_BRACKET",
-              "bracketSource": "espn_tier"
+              "bracketSource": "espn_tier",
+              "scorePrecision": "source-html",
+              "corrections": []
             },
             {
               "matchupRef": "2024:16:78",
               "week": 16,
               "homeRosterId": 1,
               "awayRosterId": 8,
+              "homeOwnerId": "ben",
+              "awayOwnerId": "jake",
+              "homeScore": 129.2,
+              "awayScore": 185.5,
+              "winner": "AWAY",
+              "margin": 56.30000000000001,
               "tier": "WINNERS_BRACKET",
-              "bracketSource": "espn_tier"
+              "bracketSource": "espn_tier",
+              "scorePrecision": "source-html",
+              "corrections": []
             },
             {
               "matchupRef": "2024:17:82",
               "week": 17,
               "homeRosterId": 8,
               "awayRosterId": 6,
+              "homeOwnerId": "jake",
+              "awayOwnerId": "harrison",
+              "homeScore": 123.8,
+              "awayScore": 100.7,
+              "winner": "HOME",
+              "margin": 23.099999999999994,
               "tier": "WINNERS_BRACKET",
-              "bracketSource": "espn_tier"
+              "bracketSource": "espn_tier",
+              "scorePrecision": "source-html",
+              "corrections": []
             }
           ]
         },
@@ -11249,40 +11543,80 @@
               "week": 15,
               "homeRosterId": 3,
               "awayRosterId": 9,
+              "homeOwnerId": "will",
+              "awayOwnerId": "alex",
+              "homeScore": 115.5,
+              "awayScore": 135,
+              "winner": "AWAY",
+              "margin": 19.5,
               "tier": "WINNERS_BRACKET",
-              "bracketSource": "espn_tier"
+              "bracketSource": "espn_tier",
+              "scorePrecision": "source-html",
+              "corrections": []
             },
             {
               "matchupRef": "2025:15:73",
               "week": 15,
               "homeRosterId": 2,
               "awayRosterId": 10,
+              "homeOwnerId": "dylan",
+              "awayOwnerId": "zach",
+              "homeScore": 161.9,
+              "awayScore": 129.8,
+              "winner": "HOME",
+              "margin": 32.099999999999994,
               "tier": "WINNERS_BRACKET",
-              "bracketSource": "espn_tier"
+              "bracketSource": "espn_tier",
+              "scorePrecision": "source-html",
+              "corrections": []
             },
             {
               "matchupRef": "2025:16:77",
               "week": 16,
               "homeRosterId": 4,
               "awayRosterId": 9,
+              "homeOwnerId": "gaurav",
+              "awayOwnerId": "alex",
+              "homeScore": 144.6,
+              "awayScore": 88.7,
+              "winner": "HOME",
+              "margin": 55.89999999999999,
               "tier": "WINNERS_BRACKET",
-              "bracketSource": "espn_tier"
+              "bracketSource": "espn_tier",
+              "scorePrecision": "source-html",
+              "corrections": []
             },
             {
               "matchupRef": "2025:16:78",
               "week": 16,
               "homeRosterId": 7,
               "awayRosterId": 2,
+              "homeOwnerId": "ethan",
+              "awayOwnerId": "dylan",
+              "homeScore": 94.3,
+              "awayScore": 127.2,
+              "winner": "AWAY",
+              "margin": 32.900000000000006,
               "tier": "WINNERS_BRACKET",
-              "bracketSource": "espn_tier"
+              "bracketSource": "espn_tier",
+              "scorePrecision": "source-html",
+              "corrections": []
             },
             {
               "matchupRef": "2025:17:82",
               "week": 17,
               "homeRosterId": 4,
               "awayRosterId": 2,
+              "homeOwnerId": "gaurav",
+              "awayOwnerId": "dylan",
+              "homeScore": 108.2,
+              "awayScore": 109.3,
+              "winner": "AWAY",
+              "margin": 1.0999999999999943,
               "tier": "WINNERS_BRACKET",
-              "bracketSource": "espn_tier"
+              "bracketSource": "espn_tier",
+              "scorePrecision": "source-html",
+              "corrections": []
             }
           ]
         },
