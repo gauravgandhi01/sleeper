@@ -96,9 +96,8 @@ function starterCell(starter, nfl) {
   const phase = { live: "In progress", final: "Final", scheduled: "Yet to play" }[state];
   copy.append(node("strong", "live-player-name", starter.name));
   if (phase) {
-    cell.dataset.gameState = state;
-    copy.append(node("span", "live-player-phase", phase));
-  }
+    cell.dataset.gameState = state; 
+   }
   copy.append(node("span", "live-player-status", statusText(starter, nfl)));
   cell.append(copy, node("strong", "live-player-points", starter.playerId == null ? "\u2014" : points(starter.points)));
   return cell;
