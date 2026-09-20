@@ -65,12 +65,15 @@ First deployment acceptance:
 
 Startup and a 15-minute timer fetch the full regular season. Browser load,
 opening Live Scores, and Refresh can also request a refresh. All callers share
-one in-flight fetch and a 60-second cooldown, even after failures. There is no
-browser polling. Sleeper's own update cadence limits freshness.
+one in-flight fetch and a 60-second cooldown, even after failures. Live Scores
+auto-refreshes every 60 seconds while visible, online, on the current season,
+and not finalized. The switch disables automatic requests; Refresh remains
+available. Background live updates do not reload owner/research data. Sleeper's
+own update cadence limits freshness.
 
 GET `/api/dashboard` reads saved data (initializing if necessary).
 POST `/api/refresh` refreshes subject to the shared cooldown. Both return:
-`{schemaVersion:1, stats, currentWeekMatchups, lastSuccessfulFetchAt, stale, warnings}`.
+`{schemaVersion:1, stats, currentWeekMatchups, nflStatus, lastSuccessfulFetchAt, stale, warnings}`.
 Responses are not cached by the browser. Saved data returns 200 even during an
 outage; no usable snapshot returns 503. Data is stale after a failed refresh or
 20 minutes without success. `/healthz` checks storage separately from upstream
@@ -91,13 +94,29 @@ Average includes both boundaries; identical scores are Average. The API retains 
 `greatWeeks` field name for compatibility, displayed as Good in the Stat book.
 Commissioner overrides, including
 zero, take precedence. Invalid/incomplete refreshes retain the previous snapshot.
-Click a Live Scores matchup to view each team's starters, lineup slots, NFL team,
-position, and fantasy points. Bench players are excluded. Player identity data
+Click a Live Scores matchup to compare paired starting slots, NFL opponents/game
+states, and fantasy points. Bench players are excluded. Player identity data
 comes only from Sleeper's `/players/nfl` endpoint and is cached on disk for 24 hours.
 Scores come directly from the matchup payload; missing values display as unavailable.
-Refresh keeps the selected matchup open; Back returns to the matchup list.
+Refresh keeps the selected matchup open, preserves focus, and retains the chosen
+matchup ordering. Links use `?tab=live&week=2&matchup=1`; browser back/forward and
+previous/next controls work without refetching. Scoring activity records observed
+team point changes and lead changes, grouped by update, capped at 30 per matchup.
+It is session-only, starts with a baseline, and resets when season/week changes.
 Live Scores stops at the end of the regular season. No projections or supplemental
 box-score sources are fetched. Team names, managers, and scores are publicly visible.
+
+NFL game metadata comes from ESPN's public scoreboard feed, independently of
+fantasy scoring. The server validates season/week, normalizes team abbreviations,
+and caches each regular-season week in memory with a 60-second cooldown and
+shared requests. Failed requests retain the last-good timestamp and data; after
+three minutes, live/remaining counts are suppressed. ESPN has no supported API
+contract, so missing/unknown statuses never prevent Sleeper scores from displaying.
+The optional `nflStatus` object includes `season`, `week`, `games` keyed by team,
+`fetchedAt`, `stale`, `unavailable`, `failed`, and `source`. Each game includes its
+opponent, kickoff, home/away, normalized state, and provider status detail.
+"Games live" and "Yet to start" count occupied starter slots by NFL game state,
+not verified player participation. Scores of zero never imply completion.
 
 ## Persistence, export, and restore
 

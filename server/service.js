@@ -2,6 +2,7 @@ import { calculateStats } from "../src/stats.js";
 import { fetchSleeperSeason } from "../src/sleeper.js";
 import { applyDisplayNames } from "./names.js";
 import { linkCurrentOwners } from "./identities.js";
+import { nflTeam } from "./nfl.js";
 
 export function currentMatchups(snapshot, players = {}) {
   const { currentWeek, regularSeasonEnd } = snapshot.metadata;
@@ -17,7 +18,7 @@ export function currentMatchups(snapshot, players = {}) {
       slot: snapshot.metadata.startingSlots?.[index] || "—",
       name: starter.playerId === null ? "Empty slot" : players[starter.playerId]?.name || `Player ${starter.playerId}`,
       position: players[starter.playerId]?.position || null,
-      nflTeam: players[starter.playerId]?.nflTeam || null,
+      nflTeam: nflTeam(players[starter.playerId]?.nflTeam || (snapshot.metadata.startingSlots?.[index] === "DEF" ? starter.playerId : null)) || null,
     })) : null;
     const side = { ...teams.get(entry.rosterId), score: entry.score, starters };
     if (entry.matchupId == null) unpairedTeams.push(side);
@@ -33,8 +34,8 @@ export function currentMatchups(snapshot, players = {}) {
 }
 
 export class DashboardService {
-  constructor({ store, leagueId, playerDirectory = null, draftBoard = null, fetchSeason = fetchSleeperSeason, now = Date.now, log = console }) {
-    Object.assign(this, { store, leagueId, playerDirectory, draftBoard, fetchSeason, now, log });
+  constructor({ store, leagueId, playerDirectory = null, draftBoard = null, nflScoreboard = null, fetchSeason = fetchSleeperSeason, now = Date.now, log = console }) {
+    Object.assign(this, { store, leagueId, playerDirectory, draftBoard, nflScoreboard, fetchSeason, now, log });
     this.saved = null;
     this.lastAttempt = -Infinity;
     this.failure = null;
@@ -69,6 +70,8 @@ export class DashboardService {
     const warnings = [...snapshot.warnings];
     if (this.failure) warnings.push(this.failure);
     else if (stale) warnings.push("League data has not been updated in over 20 minutes.");
-    return { schemaVersion: 1, stats: calculateStats(snapshot), draftBoard: this.draftBoard?.dashboard(snapshot.metadata.draftId, snapshot.teams) || null, currentWeekMatchups: currentMatchups(snapshot, this.playerDirectory?.players), lastSuccessfulFetchAt, stale, warnings };
+    const { season, currentWeek, regularSeasonEnd } = snapshot.metadata;
+    const nflStatus = currentWeek <= regularSeasonEnd ? this.nflScoreboard?.dashboard(season, currentWeek) || null : null;
+    return { schemaVersion: 1, stats: calculateStats(snapshot), nflStatus, draftBoard: this.draftBoard?.dashboard(snapshot.metadata.draftId, snapshot.teams) || null, currentWeekMatchups: currentMatchups(snapshot, this.playerDirectory?.players), lastSuccessfulFetchAt, stale, warnings };
   }
 }

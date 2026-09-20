@@ -1,4 +1,5 @@
 import { OWNER_ICONS, OWNER_ICON_VERSIONS } from "./owner-icons.js";
+import { renderLiveScores, setLiveBusy } from "./live.js";
 
 const COLORS = [
   "#27785b", "#d46a55", "#6676d8", "#c48b22", "#8b5fc7",
@@ -8,7 +9,6 @@ const COLORS = [
 const uiState = {
   statSort: { key: "total", direction: "desc" },
   matrixMode: "score",
-  selectedMatchup: null,
 };
 
 let refreshHandler = () => {};
@@ -264,106 +264,10 @@ function renderNotice(stats, context) {
   region.append(notice);
 }
 
-function renderLiveWeek(stats, context) {
-  const root = byId("liveWeekRegion");
-  root.replaceChildren();
-  const current = context.currentWeekMatchups;
-  if (!current || current.status === "unavailable") {
-    root.append(emptyState("Matchups unavailable", "The current week's schedule is not available yet. Use Refresh to check again."));
-    return;
-  }
-  if (current.status === "season_complete") {
-    root.append(emptyState("Regular season complete", "Live matchup coverage ends after Week 14. Finalized statistics remain in the Scoreboard and Stat book."));
-    return;
-  }
-  if (uiState.selectedMatchup) {
-    const selected = uiState.selectedMatchup.week === current.week
-      ? current.matchups.find((matchup) => matchup.matchupId === uiState.selectedMatchup.id) : null;
-    if (selected) {
-      renderMatchupDetail(root, selected, current.week, context, () => {
-        uiState.selectedMatchup = null;
-        renderLiveWeek(stats, context);
-        byId(`matchup-${selected.matchupId}`)?.focus();
-      });
-      return;
-    }
-    uiState.selectedMatchup = null;
-  }
-  const statusLabel = { awaiting_scoring: "Awaiting scoring", provisional: "Provisional", final: "Final" }[current.status];
-  const panel = el("section", "panel section-panel");
-  const header = el("div", "section-heading compact");
-  header.append(el("h2", "", `Week ${current.week} matchups`));
-  if (current.status !== "provisional") header.append(el("span", "live-badge", statusLabel));
-  const note = el("p", "section-note matchup-updated", `Updated ${dateTime(context.cachedAt)} · Use Refresh for new scores.`);
-  const cards = el("div", "matchup-grid");
-  current.matchups.forEach((matchup) => {
-    const card = el("button", "matchup-card matchup-link");
-    card.type = "button";
-    card.id = `matchup-${matchup.matchupId}`;
-    card.addEventListener("click", () => {
-      uiState.selectedMatchup = { week: current.week, id: matchup.matchupId };
-      renderLiveWeek(stats, context);
-      byId("matchupDetailTitle")?.focus();
-    });
-    card.setAttribute("aria-label", `${matchup.teams[0].teamName} versus ${matchup.teams[1].teamName}`);
-    matchup.teams.forEach((team) => {
-      const row = el("span", `matchup-side${team.rosterId === matchup.leaderRosterId ? " is-leading" : ""}`);
-      row.append(makeTeamLabel(team), el("strong", "matchup-score", point(team.score)));
-      card.append(row);
-    });
-    const leader = matchup.teams.find((team) => team.rosterId === matchup.leaderRosterId);
-    const label = current.status === "awaiting_scoring" ? "Awaiting scoring"
-      : leader ? `${leader.teamName} ${current.status === "final" ? "won" : "leads"} by ${point(matchup.margin)}` : "Tied";
-    card.append(el("span", "matchup-margin", label), el("span", "matchup-action", "View starters →"));
-    cards.append(card);
-  });
-  panel.append(header, note, cards);
-  if (current.unpairedTeams.length) panel.append(el("p", "section-note", `Opponent unavailable: ${current.unpairedTeams.map((team) => team.teamName).join(", ")}.`));
-  root.append(panel);
-}
-
-function renderMatchupDetail(root, matchup, week, context, onBack) {
-  const panel = el("section", "panel section-panel matchup-detail");
-  const back = el("button", "refresh-button", "← Back to Live Scores");
-  back.type = "button";
-  back.addEventListener("click", onBack);
-  const title = el("h2", "", `Week ${week} · Starters`);
-  title.id = "matchupDetailTitle";
-  title.tabIndex = -1;
-  panel.append(back, title, el("p", "section-note matchup-updated", `Updated ${dateTime(context.cachedAt)} · Fantasy points from Sleeper.`));
-  const columns = el("div", "matchup-grid");
-  matchup.teams.forEach((team) => {
-    const section = el("section", "starter-team");
-    const heading = el("div", "matchup-side");
-    heading.append(makeTeamLabel(team), el("strong", "matchup-score", point(team.score)));
-    section.append(heading);
-    if (!team.starters?.length) {
-      section.append(el("p", "section-note", "Starter details unavailable. Use Refresh to check again."));
-    } else {
-      const table = el("table", "starter-table");
-      table.append(el("caption", "visually-hidden", `${team.teamName} starters and fantasy points`));
-      const head = el("thead");
-      const labels = el("tr");
-      ["Slot", "Starter", "Points"].forEach((label) => {
-        const cell = el("th", "", label); cell.scope = "col"; labels.append(cell);
-      });
-      head.append(labels);
-      const body = el("tbody");
-      team.starters.forEach((starter) => {
-        const row = el("tr");
-        const name = el("td");
-        name.append(el("strong", "starter-name", starter.name));
-        name.append(el("span", "starter-meta", [starter.position, starter.nflTeam].filter(Boolean).join(" · ")));
-        row.append(el("td", "starter-slot", starter.slot), name, el("td", "starter-points", starter.playerId === null ? "—" : point(starter.points)));
-        body.append(row);
-      });
-      table.append(head, body);
-      section.append(table);
-    }
-    columns.append(section);
-  });
-  panel.append(columns);
-  root.append(panel);
+export function renderLiveWeek(stats, context) {
+  renderHeader(stats, context);
+  renderNotice(stats, context);
+  renderLiveScores(stats, context, makeAvatar, refreshHandler);
 }
 
 function renderTrendControls(stats) {
@@ -769,7 +673,6 @@ function activateTab(activeTab, notify = true) {
     tab.tabIndex = active ? 0 : -1;
     byId(tab.dataset.view).hidden = !active;
   });
-  if (activeTab.id === "liveTab") refreshHandler();
   if (notify) tabHandler(Object.keys(TAB_IDS).find((key) => TAB_IDS[key] === activeTab.id));
 }
 
@@ -780,10 +683,17 @@ export function selectTab(name) {
 }
 
 export function setRefreshState(isLoading) {
+  setLiveBusy(isLoading);
   const button = byId("refreshButton");
   button.disabled = isLoading;
   button.setAttribute("aria-busy", String(isLoading));
-  button.replaceChildren(el("span", "", "↻"), document.createTextNode(isLoading ? " Checking Sleeper…" : " Refresh data"));
+  button.setAttribute("aria-label", isLoading ? "Checking Sleeper" : "Refresh data");
+  const icon = globalThis.lucide ? globalThis.lucide.createElement(globalThis.lucide.RefreshCw) : el("span", "", "↻");
+  icon.setAttribute("class", "refresh-icon");
+  icon.setAttribute("aria-hidden", "true");
+  icon.setAttribute("width", "18");
+  icon.setAttribute("height", "18");
+  button.replaceChildren(icon, el("span", "refresh-label", isLoading ? "Checking Sleeper…" : "Refresh data"));
 }
 
 function renderDraftBoard(board) {
@@ -860,8 +770,6 @@ export function renderError(error) {
 export function renderDashboard(stats, context = {}) {
   byId("seasonRange").textContent = `Regular season · Weeks ${stats.metadata.startWeek}–${stats.metadata.regularSeasonEnd} · ${stats.metadata.teamCount} teams`;
   renderRecap(context);
-  renderHeader(stats, context);
-  renderNotice(stats, context);
   renderMatrix(stats);
   renderWeekly(stats);
   renderLiveWeek(stats, context);
@@ -908,7 +816,6 @@ export function prepareSeason(year, archived, ownerId, notify = true) {
   });
   byId("brandSeason").textContent = `True League · ${year}`;
   highlightedOwner = ownerId;
-  uiState.selectedMatchup = null;
   byId("refreshButton").hidden = archived;
   const active = document.querySelector('[role="tab"][aria-selected="true"]');
   for (const id of ["liveTab", "draftTab"]) byId(id).hidden = archived;

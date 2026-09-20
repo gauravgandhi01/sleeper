@@ -32,6 +32,8 @@ export async function createApp({ service, publicBaseUrl = "http://localhost:417
       return res.json(historical);
     }
     if (req.method === "POST" || !service.saved) await service.refresh();
+    const metadata = service.saved?.snapshot.metadata;
+    if (metadata && metadata.currentWeek <= metadata.regularSeasonEnd) await service.nflScoreboard?.refresh(metadata.season, metadata.currentWeek);
     const value = service.dashboard();
     if (!value) return res.status(503).json({ error: "League data is temporarily unavailable. Please try again shortly." });
     res.json({ ...value, source: "sleeper" });
@@ -64,6 +66,8 @@ export async function createApp({ service, publicBaseUrl = "http://localhost:417
     } catch { res.status(503).json({ status: "unhealthy", storage: "unavailable", dataAvailable: Boolean(service.saved) }); }
   });
   app.get("/", (req, res) => { res.set("Cache-Control", "no-cache").type("html").send(html); });
+  app.get("/vendor/lucide.js", (req, res) => res.sendFile(join(root, "node_modules/lucide/dist/umd/lucide.js")));
+  for (const asset of ["live.js", "live-state.js"]) app.get(`/src/${asset}`, (req, res) => res.sendFile(join(root, "src", asset), { maxAge: 0 }));
   for (const asset of ["styles.css", "src/app.js", "src/ui.js", "src/owner-icons.js", "src/theme.js", "logo.png", "logo_white.png", "public/favicon.svg", "public/og.png", ...Object.values(OWNER_ICONS)]) {
     app.get(`/${asset}`, (req, res) => res.sendFile(join(root, asset), { maxAge: 0 }));
   }

@@ -97,7 +97,7 @@ test("research deep links and late era/pair responses survive outage, season cha
     if (deferResearch) return new Promise((resolve) => delayed.push(() => resolve(response(data))));
     return response(data);
   };
-  const source = (await readFile(new URL("../src/app.js", import.meta.url), "utf8")).replace('"./ui.js"', JSON.stringify(`${new URL("../src/ui.js", import.meta.url).href}?researchApp=${Date.now()}`));
+  const source = (await readFile(new URL("../src/app.js", import.meta.url), "utf8")).replaceAll('"./live.js"', JSON.stringify(new URL("../src/live.js", import.meta.url).href)).replaceAll('"./live-state.js"', JSON.stringify(new URL("../src/live-state.js", import.meta.url).href)).replace('"./ui.js"', JSON.stringify(`${new URL("../src/ui.js", import.meta.url).href}?researchApp=${Date.now()}`));
   await import(`data:text/javascript;base64,${Buffer.from(source).toString("base64")}`);
   await flush();
   assert.equal(doc.getElementById("headToHeadTab").getAttribute("aria-selected"), "true");
@@ -176,6 +176,19 @@ function environment(t, url = "http://localhost/") {
   t.after(() => dom.window.close());
   return dom.window.document;
 }
+
+test("a successful live-only refresh clears connection warnings without replacing other views", async (t) => {
+  const doc = environment(t);
+  const ui = await import(`../src/ui.js?liveRecovery=${Date.now()}`);
+  const payload = archive.dashboard("2025");
+  ui.renderDashboard(payload.stats, payload);
+  const matrix = doc.getElementById("matrixTable").firstChild;
+  ui.renderConnectionWarning();
+  assert.match(doc.getElementById("noticeRegion").textContent, /Connection interrupted/);
+  ui.renderLiveWeek(payload.stats, { warnings: [], cachedAt: new Date().toISOString() });
+  assert.equal(doc.getElementById("noticeRegion").textContent, "");
+  assert.equal(doc.getElementById("matrixTable").firstChild, matrix);
+});
 
 test("season UI: archive recap, owner profiles, links, visible-tab keyboard navigation and preferences", async (t) => {
   const doc = environment(t);
@@ -266,7 +279,7 @@ test("client ignores late season/refresh responses and handles deep links and ba
     if (url.endsWith("season=2025")) return response(archive.dashboard("2025"));
     return response(current);
   };
-  const source = (await readFile(new URL("../src/app.js", import.meta.url), "utf8")).replace('"./ui.js"', JSON.stringify(`${new URL("../src/ui.js", import.meta.url).href}?race=${Date.now()}`));
+  const source = (await readFile(new URL("../src/app.js", import.meta.url), "utf8")).replaceAll('"./live.js"', JSON.stringify(new URL("../src/live.js", import.meta.url).href)).replaceAll('"./live-state.js"', JSON.stringify(new URL("../src/live-state.js", import.meta.url).href)).replace('"./ui.js"', JSON.stringify(`${new URL("../src/ui.js", import.meta.url).href}?race=${Date.now()}`));
   await import(`data:text/javascript;base64,${Buffer.from(source).toString("base64")}`);
   assert.match(doc.getElementById("brandSeason").textContent, /2026/);
   const select = doc.getElementById("seasonSelect");
@@ -298,7 +311,7 @@ test("initial archive deep link loads highlighted owner without refreshing Sleep
     const payload = url === "/api/seasons" ? catalog : url === "/api/owners" ? archive.careers(null, { currentSeason: "2026" }) : archive.dashboard("2022");
     return { ok: true, json: async () => payload };
   };
-  const source = (await readFile(new URL("../src/app.js", import.meta.url), "utf8")).replace('"./ui.js"', JSON.stringify(`${new URL("../src/ui.js", import.meta.url).href}?deep=${Date.now()}`));
+  const source = (await readFile(new URL("../src/app.js", import.meta.url), "utf8")).replaceAll('"./live.js"', JSON.stringify(new URL("../src/live.js", import.meta.url).href)).replaceAll('"./live-state.js"', JSON.stringify(new URL("../src/live-state.js", import.meta.url).href)).replace('"./ui.js"', JSON.stringify(`${new URL("../src/ui.js", import.meta.url).href}?deep=${Date.now()}`));
   await import(`data:text/javascript;base64,${Buffer.from(source).toString("base64")}`);
   await flush();
   assert.equal(calls.includes("/api/refresh"), false);
@@ -433,7 +446,7 @@ test("era switching ignores late responses and never presents all-era totals as 
     }
     return response(archive.dashboard("2025"));
   };
-  const source = (await readFile(new URL("../src/app.js", import.meta.url), "utf8")).replace('"./ui.js"', JSON.stringify(`${new URL("../src/ui.js", import.meta.url).href}?eraRace=${Date.now()}`));
+  const source = (await readFile(new URL("../src/app.js", import.meta.url), "utf8")).replaceAll('"./live.js"', JSON.stringify(new URL("../src/live.js", import.meta.url).href)).replaceAll('"./live-state.js"', JSON.stringify(new URL("../src/live-state.js", import.meta.url).href)).replace('"./ui.js"', JSON.stringify(`${new URL("../src/ui.js", import.meta.url).href}?eraRace=${Date.now()}`));
   await import(`data:text/javascript;base64,${Buffer.from(source).toString("base64")}`);
   await flush();
   const change = (value) => { doc.getElementById("ownerEra").value = value; doc.getElementById("ownerEra").dispatchEvent(new window.Event("change")); };

@@ -246,9 +246,9 @@ test("adapter distinguishes preseason, explicit zero completion, and postseason"
   assert.equal(explicit.completedWeeks.length, 0);
 });
 
-test("browser entrypoint only fetches local APIs and does not poll", async () => {
+test("browser entrypoint only fetches local APIs", async () => {
   const source = await readFile(new URL("../src/app.js", import.meta.url), "utf8");
-  assert.doesNotMatch(source, /api\.sleeper|localStorage|setInterval/);
+  assert.doesNotMatch(source, /api\.sleeper|localStorage/);
   assert.match(source, /\/api\/refresh/);
 });
 
