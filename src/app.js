@@ -91,7 +91,7 @@ async function requestDashboard(refresh = false, background = false) {
     if (version !== requestVersion) return;
     if (payload.schemaVersion !== 1 || !payload.stats) throw new Error("Unexpected dashboard response.");
     liveStatus = payload.currentWeekMatchups?.status;
-    const context = { isStale: payload.stale, cachedAt: payload.lastSuccessfulFetchAt, warnings: payload.warnings, currentWeekMatchups: payload.currentWeekMatchups, nflStatus: payload.nflStatus, draftBoard: payload.draftBoard, source: payload.source, recap: payload.recap, provenance: payload.provenance };
+    const context = { isStale: payload.stale, cachedAt: payload.lastSuccessfulFetchAt, warnings: payload.warnings, currentWeekMatchups: payload.currentWeekMatchups, nflStatus: payload.nflStatus, espnFantasyStatus: payload.espnFantasyStatus, draftBoard: payload.draftBoard, source: payload.source, recap: payload.recap, provenance: payload.provenance };
     latestDashboard = { stats: payload.stats, context };
     dashboardNeedsRender = background && hasData && displayedSeason === year;
     if (dashboardNeedsRender) renderLiveWeek(payload.stats, context);

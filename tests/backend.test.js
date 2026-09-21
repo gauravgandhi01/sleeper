@@ -9,6 +9,7 @@ import { createApp } from "../server/app.js";
 import { fetchSleeperSeason, cutoffCompletedWeek } from "../src/sleeper.js";
 import { PlayerDirectory } from "../server/players.js";
 import { DraftBoard, normalizeDraft } from "../server/draft.js";
+import { EspnFantasyProjections } from "../server/espn-fantasy.js";
 
 test("draft grid follows actual snake slots and retains compound last names", () => {
   const raw = { draft_id: "123", season: "2026", type: "snake", status: "complete", settings: { rounds: 2, teams: 2 }, slot_to_roster_id: { 1: 2, 2: 1 } };
@@ -116,6 +117,35 @@ test("scheduled, provisional, final, tied and unpaired matchup states", () => {
   assert.equal(currentMatchups(snapshot).unpairedTeams.length, 2);
   snapshot.metadata.currentWeek = 15;
   assert.equal(currentMatchups(snapshot).status, "season_complete");
+});
+
+test("ESPN fantasy projections merge into current Sleeper matchups", async () => {
+  const payload = {
+    teams: [{ id: 1, owners: ["{26A72411-1823-4B1B-A724-1118237B1BD4}"] }, { id: 2, owners: ["{492B6C02-FE6E-462C-AB6C-02FE6E762CA9}+{7D0CEB2A-FD69-4B44-A332-D439AB4DECC1}"] }],
+    schedule: [{
+      home: { teamId: 1, totalProjectedPointsLive: 101.25, rosterForCurrentScoringPeriod: { entries: [{ playerPoolEntry: { player: { fullName: "Davante Adams", defaultPositionId: 4, proTeamId: 20, stats: [{ seasonId: 2026, scoringPeriodId: 2, statSourceId: 1, statSplitTypeId: 0, appliedTotal: 14.44 }] } } }] } },
+      away: { teamId: 2, totalProjectedPointsLive: 88.1, rosterForCurrentScoringPeriod: { entries: [] } },
+    }],
+  };
+  let calls = 0;
+  const espn = new EspnFantasyProjections({ espnS2: "s2", swid: "swid", now: () => Date.parse("2026-09-20T12:00:00Z"), log, fetchImpl: async () => {
+    calls++;
+    return { ok: true, json: async () => payload };
+  } });
+  await espn.refresh("2026", 2);
+  await espn.refresh("2026", 2);
+  assert.equal(calls, 1);
+
+  const snapshot = fixture();
+  snapshot.metadata.startingSlots = ["WR"];
+  snapshot.teams[0].canonicalOwnerIds = ["harrison"];
+  snapshot.teams[1].canonicalOwnerIds = ["alex"];
+  snapshot.currentWeekData.entries[0].starters = [{ playerId: "p1", points: 0 }];
+  snapshot.currentWeekData.entries[1].starters = [{ playerId: "p2", points: 0 }];
+  const matchups = currentMatchups(snapshot, { p1: { name: "Davante Adams", nflTeam: "NYJ" }, p2: { name: "Other Player", nflTeam: "BUF" } }, espn.dashboard("2026", 2));
+  assert.equal(matchups.matchups[0].teams[0].projectedScore, 101.25);
+  assert.equal(matchups.matchups[0].teams[0].starters[0].projectedPoints, 14.44);
+  assert.equal(matchups.matchups[0].teams[1].projectedScore, 88.1);
 });
 
 test("store persists, deduplicates timestamps, archives corrections, recovers corrupted latest", async (t) => {

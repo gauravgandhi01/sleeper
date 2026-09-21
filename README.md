@@ -103,8 +103,11 @@ matchup ordering. Links use `?tab=live&week=2&matchup=1`; browser back/forward a
 previous/next controls work without refetching. Scoring activity records observed
 team point changes and lead changes, grouped by update, capped at 30 per matchup.
 It is session-only, starts with a baseline, and resets when season/week changes.
-Live Scores stops at the end of the regular season. No projections or supplemental
-box-score sources are fetched. Team names, managers, and scores are publicly visible.
+Live Scores stops at the end of the regular season. Sleeper remains the source for
+actual fantasy scores. Optional projected totals come from ESPN Fantasy when
+`ESPN_S2` and `SWID` are present, using `ESPN_FANTASY_LEAGUE_ID` or the historical
+league id by default. Projection failures never block Sleeper scores. Team names,
+managers, and scores are publicly visible.
 
 NFL game metadata comes from ESPN's public scoreboard feed, independently of
 fantasy scoring. The server validates season/week, normalizes team abbreviations,

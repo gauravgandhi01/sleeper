@@ -39,13 +39,13 @@ test("starter counts exclude empty slots and do not equate zero scores with comp
   const now = Date.now();
   const nfl = { fetchedAt: new Date(now).toISOString(), games: { JAX: { state: "live" }, WAS: { state: "scheduled" }, NYJ: { state: "final" }, PIT: { state: "postponed" } } };
   const team = { starters: [{ playerId: "1", nflTeam: "JAC", points: 0 }, { playerId: "2", nflTeam: "WAS", points: 0 }, { playerId: null, nflTeam: "JAX" }, { playerId: "3", nflTeam: "NYJ" }, { playerId: "PIT", nflTeam: "PIT" }, { playerId: "unknown" }] };
-  assert.deepEqual(starterCounts(team, nfl, now), { live: 1, scheduled: 1, unknown: 2 });
+  assert.deepEqual(starterCounts(team, nfl, now), { final: 1, live: 1, scheduled: 1, unknown: 2 });
   assert.equal(starterCounts(team, nfl, now + 180000), null);
   assert.equal(starterCounts({}, nfl, now), null);
 });
 
 function current(a = 10, b = 9, week = 2) {
-  return { week, status: "provisional", unpairedTeams: [], matchups: [{ matchupId: 1, margin: Math.abs(a - b), leaderRosterId: a === b ? null : a > b ? 1 : 2, teams: [{ rosterId: 1, teamName: "Alpha", score: a, starters: [{ playerId: "1", slot: "QB", name: "Starter One", nflTeam: "JAX", points: a }] }, { rosterId: 2, teamName: "Beta", score: b, starters: [{ playerId: "2", slot: "QB", name: "Starter Two", nflTeam: "WAS", points: b }] }] }] };
+  return { week, status: "provisional", unpairedTeams: [], matchups: [{ matchupId: 1, margin: Math.abs(a - b), leaderRosterId: a === b ? null : a > b ? 1 : 2, teams: [{ rosterId: 1, teamName: "Alpha", score: a, projectedScore: 18, starters: [{ playerId: "1", slot: "QB", name: "Starter One", nflTeam: "JAX", points: a, projectedPoints: 12 }] }, { rosterId: 2, teamName: "Beta", score: b, projectedScore: 16, starters: [{ playerId: "2", slot: "QB", name: "Starter Two", nflTeam: "WAS", points: b, projectedPoints: 10 }] }] }] };
 }
 test("activity groups score changes, handles ties/decreases, rejects late snapshots and caps the feed", () => {
   const feed = new LiveActivity();
@@ -90,6 +90,7 @@ test("live UI preserves focus, stable sorting, routes, paired starters, and acti
   const context = { currentWeekMatchups: data, cachedAt: new Date().toISOString(), nflStatus: { fetchedAt: new Date().toISOString(), games: normalizeScoreboard(scoreboard(), "2026", 2) } };
   const avatar = () => doc.createElement("span");
   renderLiveScores(stats, context, avatar, () => {});
+  assert.match(doc.querySelector(".live-projected-value").textContent, /18.00/);
   const sort = doc.getElementById("liveSort"); sort.value = "closest"; sort.dispatchEvent(new dom.window.Event("change"));
   assert.equal(doc.querySelector(".live-matchup-card").id, "matchup-2");
   doc.getElementById("matchup-1").focus();
@@ -99,6 +100,10 @@ test("live UI preserves focus, stable sorting, routes, paired starters, and acti
   assert.equal(doc.querySelector(".live-matchup-card").id, "matchup-2");
   doc.getElementById("matchup-1").click();
   assert.equal(new URL(dom.window.location.href).searchParams.get("matchup"), "1");
+  assert.match(doc.querySelector(".live-player-projected").textContent, /12.00/);
+  data.matchups[0].teams[0].starters[0].nflTeam = "NYJ";
+  renderLiveScores(stats, context, avatar, () => {});
+  assert.equal(doc.querySelector(".live-starter[data-game-state='final'] .live-player-projected"), null);
   assert.equal(doc.querySelectorAll(".live-starter-row:not(.live-roster-labels)").length, 1);
   assert.equal(doc.getElementById("livePrevious").disabled, true);
   const newer = { ...context, currentWeekMatchups: current(8, 11), cachedAt: new Date(Date.now() + 60000).toISOString() };

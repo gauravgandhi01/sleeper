@@ -5,6 +5,7 @@ import { createApp } from "./app.js";
 import { PlayerDirectory } from "./players.js";
 import { DraftBoard } from "./draft.js";
 import { NflScoreboard } from "./nfl.js";
+import { EspnFantasyProjections } from "./espn-fantasy.js";
 
 const leagueId = process.env.LEAGUE_ID || "1395542220504854528";
 if (!/^\d+$/.test(leagueId)) throw new Error("LEAGUE_ID must be a numeric string");
@@ -14,7 +15,7 @@ const playerDirectory = new PlayerDirectory(directory);
 await playerDirectory.initialize();
 const draftBoard = new DraftBoard(directory, leagueId);
 await draftBoard.initialize();
-const service = new DashboardService({ store: new SnapshotStore(directory, leagueId), leagueId, playerDirectory, draftBoard, nflScoreboard: new NflScoreboard() });
+const service = new DashboardService({ store: new SnapshotStore(directory, leagueId), leagueId, playerDirectory, draftBoard, nflScoreboard: new NflScoreboard(), espnFantasy: new EspnFantasyProjections() });
 await service.initialize();
 const app = await createApp({ service, publicBaseUrl: process.env.PUBLIC_BASE_URL || process.env.RENDER_EXTERNAL_URL || `http://localhost:${port}` });
 const server = app.listen(port, "0.0.0.0", () => console.info("server_ready", { port }));

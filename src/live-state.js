@@ -10,11 +10,11 @@ export function statusFresh(nfl, now = Date.now()) {
 
 export function starterCounts(team, nfl, now = Date.now()) {
   if (!statusFresh(nfl, now) || !team.starters?.length) return null;
-  const counts = { live: 0, scheduled: 0, unknown: 0 };
+  const counts = { final: 0, live: 0, scheduled: 0, unknown: 0 };
   for (const starter of team.starters) {
     if (starter.playerId == null) continue;
     const state = gameFor(starter, nfl)?.state;
-    if (state === "live" || state === "scheduled") counts[state]++;
+    if (state === "final" || state === "live" || state === "scheduled") counts[state]++;
     else if (state !== "final") counts.unknown++;
   }
   return counts;

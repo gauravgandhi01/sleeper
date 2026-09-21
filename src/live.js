@@ -1,4 +1,5 @@
 import { LiveActivity, gameFor, starterCounts, statusFresh } from "./live-state.js";
+import { OWNER_ICONS, OWNER_ICON_VERSIONS } from "./owner-icons.js";
 
 const activity = new LiveActivity();
 let sortMode = "order";
@@ -13,6 +14,7 @@ let observedHeader = null;
 let navigateBack = false;
 const points = (value) => Number.isFinite(value) ? value.toFixed(2) : "\u2014";
 const time = (value) => value ? new Date(value).toLocaleTimeString([], { hour: "numeric", minute: "2-digit", second: "2-digit" }) : "Unavailable";
+const recordText = (record) => record ? `${record.wins}-${record.losses}${record.ties ? `-${record.ties}` : ""}` : "";
 function node(tag, cls = "", text) {
   const element = document.createElement(tag);
   element.className = cls;
@@ -56,17 +58,79 @@ function navigate(matchupId, week, replace = false) {
   document.getElementById(matchupId == null ? "liveTitle" : "matchupDetailTitle")?.focus({ preventScroll: true });
 }
 
+function ownerInitials(team) {
+  const source = team.managerName || team.teamName || "Owner";
+  const parts = source.split(/\s+/).filter(Boolean);
+  return (parts.length > 1 ? `${parts[0][0]}${parts[1][0]}` : parts[0]?.slice(0, 2) || "OW").toUpperCase();
+}
+
+function ownerIconSrc(team) {
+  const ownerId = team.canonicalOwnerIds?.find((id) => OWNER_ICONS[id]);
+  if (!ownerId) return null;
+  const version = OWNER_ICON_VERSIONS[ownerId];
+  return `./${OWNER_ICONS[ownerId]}${version ? `?v=${version}` : ""}`;
+}
+
+function ownerAvatar(team) {
+  const avatar = node("span", "team-avatar owner-avatar", ownerInitials(team));
+  const imageUrl = ownerIconSrc(team);
+  if (imageUrl) {
+    const image = node("img");
+    image.src = imageUrl;
+    image.alt = "";
+    image.loading = "lazy";
+    image.addEventListener("error", () => { image.hidden = true; }, { once: true });
+    avatar.append(image);
+  }
+  return avatar;
+}
+
 function teamSide(team, context, makeAvatar) {
   const side = node("div", "live-team");
   side.append(makeAvatar(team));
   const copy = node("div", "live-team-copy");
-  copy.append(node("strong", "", team.teamName));
+  const name = node("strong", "", team.teamName);
+  const record = recordText(team.record);
+  if (record) name.append(" ", node("span", "live-team-record", record));
+  copy.append(name);
   const counts = starterCounts(team, context.nflStatus);
-  copy.append(node("span", "live-team-status", counts ? `Games live ${counts.live} \u00b7 Yet to start ${counts.scheduled}${counts.unknown ? ` \u00b7 Unknown ${counts.unknown}` : ""}` : "Game status unavailable"));
+  copy.append(node("span", "live-team-status", counts ? `Finished ${counts.final} \u00b7 Live ${counts.live} \u00b7 Remaining ${counts.scheduled}${counts.unknown ? ` \u00b7 Unknown ${counts.unknown}` : ""}` : "Game status unavailable"));
+  const scoreStack = node("span", "live-score-stack");
   const score = node("strong", "live-score-value", points(team.score));
   if (Date.now() - (activity.changed.get(team.rosterId) || 0) < 2500) score.classList.add("score-changed");
-  side.append(copy, score);
+  scoreStack.append(score);
+  if (Number.isFinite(team.projectedScore)) scoreStack.append(node("span", "live-projected-value", points(team.projectedScore)));
+  side.append(copy, scoreStack);
   return side;
+}
+
+function scoreBar(matchup) {
+  const bar = node("div", "live-score-bar");
+  const [a, b] = matchup.teams;
+  const scores = matchup.teams.map((team) => Number.isFinite(team.score) ? Math.max(0, team.score) : 0);
+  const total = scores[0] + scores[1];
+  const widths = total > 0 ? scores.map((score) => Math.max(6, score / total * 100)) : [50, 50];
+  const sum = widths[0] + widths[1];
+  const labels = [`${a.teamName}: ${points(a.score)}`, `${b.teamName}: ${points(b.score)}`];
+  matchup.teams.forEach((team, index) => {
+    const segment = node("span", team.rosterId === matchup.leaderRosterId ? "is-leading" : "");
+    segment.style.flexBasis = `${widths[index] / sum * 100}%`;
+    segment.title = labels[index];
+    bar.append(segment);
+  });
+  const leaderIndex = matchup.teams.findIndex((team) => team.rosterId === matchup.leaderRosterId);
+  if (leaderIndex >= 0) {
+    const marker = node("span", "live-score-bar-marker");
+    const leader = matchup.teams[leaderIndex];
+    const split = widths[0] / sum * 100;
+    marker.style.left = `${split}%`;
+    marker.title = `${leader.teamName} leads`;
+    marker.setAttribute("aria-hidden", "true");
+    marker.append(ownerAvatar(leader));
+    bar.append(marker);
+  }
+  bar.setAttribute("aria-label", labels.join(" versus "));
+  return bar;
 }
 
 function marginLabel(matchup, status) {
@@ -93,13 +157,14 @@ function starterCell(starter, nfl) {
   if (!starter) { cell.append(node("span", "live-player-name", "Unavailable")); return cell; }
   const copy = node("div", "live-player-copy");
   const state = starter.playerId != null && statusFresh(nfl) ? gameFor(starter, nfl)?.state : null;
-  const phase = { live: "In progress", final: "Final", scheduled: "Yet to play" }[state];
+  const score = state === "scheduled" && starter.points === 0 ? "\u2014" : points(starter.points);
+  const scoreStack = node("span", "live-player-score-stack");
   copy.append(node("strong", "live-player-name", starter.name));
-  if (phase) {
-    cell.dataset.gameState = state; 
-   }
+  if (["live", "final", "scheduled"].includes(state)) cell.dataset.gameState = state;
   copy.append(node("span", "live-player-status", statusText(starter, nfl)));
-  cell.append(copy, node("strong", "live-player-points", starter.playerId == null ? "\u2014" : points(starter.points)));
+  scoreStack.append(node("strong", "live-player-points", starter.playerId == null ? "\u2014" : score));
+  if (state !== "final" && Number.isFinite(starter.projectedPoints)) scoreStack.append(node("span", "live-player-projected", points(starter.projectedPoints)));
+  cell.append(copy, scoreStack);
   return cell;
 }
 
@@ -176,6 +241,8 @@ function draw() {
   const nfl = context.nflStatus;
   lastFresh = statusFresh(nfl);
   freshness.append(node("span", "", `NFL ${time(nfl?.fetchedAt)}${!statusFresh(nfl) ? " \u00b7 Stale" : nfl?.failed ? " \u00b7 Saved" : ""}`));
+  const projections = context.espnFantasyStatus;
+  if (projections) freshness.append(node("span", "", projections.unavailable && !projections.fetchedAt ? "Proj Off" : `Proj ${projections.fetchedAt ? time(projections.fetchedAt) : "Unavailable"}${projections.stale ? " \u00b7 Stale" : projections.failed ? " \u00b7 Saved" : ""}`));
   const label = node("label", "live-auto", "Auto-refresh");
   const input = node("input"); input.type = "checkbox"; input.id = "liveAuto"; input.checked = auto; input.setAttribute("role", "switch");
   input.addEventListener("change", () => { auto = input.checked; window.dispatchEvent(new window.Event("live-auto-change")); });
@@ -212,6 +279,7 @@ function draw() {
       card.setAttribute("aria-label", `${matchup.teams.map((team) => team.teamName).join(" versus ")}, view starters`);
       card.addEventListener("click", () => navigate(id, current.week));
       matchup.teams.forEach((team) => { const side = teamSide(team, context, makeAvatar); side.classList.toggle("is-leading", team.rosterId === matchup.leaderRosterId); card.append(side); });
+      card.append(scoreBar(matchup));
       const footer = node("span", "live-card-footer");
       footer.append(node("span", "", marginLabel(matchup, current.status)), node("span", "live-chevron", "\u203a")); card.append(footer); grid.append(card);
     }

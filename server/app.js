@@ -33,7 +33,10 @@ export async function createApp({ service, publicBaseUrl = "http://localhost:417
     }
     if (req.method === "POST" || !service.saved) await service.refresh();
     const metadata = service.saved?.snapshot.metadata;
-    if (metadata && metadata.currentWeek <= metadata.regularSeasonEnd) await service.nflScoreboard?.refresh(metadata.season, metadata.currentWeek);
+    if (metadata && metadata.currentWeek <= metadata.regularSeasonEnd) await Promise.all([
+      service.nflScoreboard?.refresh(metadata.season, metadata.currentWeek),
+      service.espnFantasy?.refresh(metadata.season, metadata.currentWeek),
+    ]);
     const value = service.dashboard();
     if (!value) return res.status(503).json({ error: "League data is temporarily unavailable. Please try again shortly." });
     res.json({ ...value, source: "sleeper" });
