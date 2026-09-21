@@ -19,12 +19,25 @@ function playersName(starter) {
   return String(starter?.name || "");
 }
 
-function projectedScoreForTeam(side, projections) {
+function gameStateForStarter(starter, nflStatus) {
+  if (!starter?.nflTeam || nflStatus?.stale || nflStatus?.unavailable) return null;
+  const aliases = { JAC: "JAX", LA: "LAR", WSH: "WAS" };
+  return nflStatus.games?.[aliases[starter.nflTeam] || starter.nflTeam]?.state || null;
+}
+
+function projectedScoreForTeam(side, projections, nflStatus) {
   if (!projections || projections.stale || projections.unavailable) return null;
-  const ownerProjection = [...(projections.teams?.values?.() || [])].find((team) => side.canonicalOwnerIds?.some((id) => team.ownerIds?.includes(id)));
-  if (Number.isFinite(ownerProjection?.projectedScore)) return ownerProjection.projectedScore;
-  const starterSum = (side.starters || []).reduce((sum, starter) => Number.isFinite(starter.projectedPoints) ? sum + starter.projectedPoints : sum, 0);
-  return starterSum ? Math.round(starterSum * 100) / 100 : null;
+  let hasProjection = false;
+  const starterSum = (side.starters || []).reduce((sum, starter) => {
+    if (starter.playerId == null) return sum;
+    if (gameStateForStarter(starter, nflStatus) === "final") return sum + (Number.isFinite(starter.points) ? starter.points : 0);
+    if (Number.isFinite(starter.projectedPoints)) {
+      hasProjection = true;
+      return sum + Math.max(Number.isFinite(starter.points) ? starter.points : 0, starter.projectedPoints);
+    }
+    return sum + (Number.isFinite(starter.points) ? starter.points : 0);
+  }, 0);
+  return hasProjection ? Math.round(starterSum * 100) / 100 : null;
 }
 
 function projectionStatus(status) {
@@ -33,7 +46,7 @@ function projectionStatus(status) {
   return { season, week, fetchedAt, stale, unavailable, failed, reason, source };
 }
 
-export function currentMatchups(snapshot, players = {}, projections = null) {
+export function currentMatchups(snapshot, players = {}, projections = null, nflStatus = null) {
   const { currentWeek, regularSeasonEnd } = snapshot.metadata;
   if (currentWeek > regularSeasonEnd) return { week: null, status: "season_complete", matchups: [], unpairedTeams: [] };
   const week = snapshot.currentWeekData;
@@ -71,7 +84,7 @@ export function currentMatchups(snapshot, players = {}, projections = null) {
       nflTeam: nflTeam(players[starter.playerId]?.nflTeam || (snapshot.metadata.startingSlots?.[index] === "DEF" ? starter.playerId : null)) || null,
     })).map((starter) => ({ ...starter, projectedPoints: projectionForStarter(starter, projections) })) : null;
     const side = { ...teams.get(entry.rosterId), record: records.get(entry.rosterId) || { wins: 0, losses: 0, ties: 0 }, score: entry.score, starters };
-    side.projectedScore = projectedScoreForTeam(side, projections);
+    side.projectedScore = projectedScoreForTeam(side, projections, nflStatus);
     if (entry.matchupId == null) unpairedTeams.push(side);
     else groups.set(entry.matchupId, [...(groups.get(entry.matchupId) || []), side]);
   }
@@ -124,6 +137,6 @@ export class DashboardService {
     const { season, currentWeek, regularSeasonEnd } = snapshot.metadata;
     const nflStatus = currentWeek <= regularSeasonEnd ? this.nflScoreboard?.dashboard(season, currentWeek) || null : null;
     const espnFantasyStatus = currentWeek <= regularSeasonEnd ? this.espnFantasy?.dashboard(season, currentWeek) || null : null;
-    return { schemaVersion: 1, stats: calculateStats(snapshot), nflStatus, espnFantasyStatus: projectionStatus(espnFantasyStatus), draftBoard: this.draftBoard?.dashboard(snapshot.metadata.draftId, snapshot.teams) || null, currentWeekMatchups: currentMatchups(snapshot, this.playerDirectory?.players, espnFantasyStatus), lastSuccessfulFetchAt, stale, warnings };
+    return { schemaVersion: 1, stats: calculateStats(snapshot), nflStatus, espnFantasyStatus: projectionStatus(espnFantasyStatus), draftBoard: this.draftBoard?.dashboard(snapshot.metadata.draftId, snapshot.teams) || null, currentWeekMatchups: currentMatchups(snapshot, this.playerDirectory?.players, espnFantasyStatus, nflStatus), lastSuccessfulFetchAt, stale, warnings };
   }
 }

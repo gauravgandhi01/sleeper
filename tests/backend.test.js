@@ -123,7 +123,10 @@ test("ESPN fantasy projections merge into current Sleeper matchups", async () =>
   const payload = {
     teams: [{ id: 1, owners: ["{26A72411-1823-4B1B-A724-1118237B1BD4}"] }, { id: 2, owners: ["{492B6C02-FE6E-462C-AB6C-02FE6E762CA9}+{7D0CEB2A-FD69-4B44-A332-D439AB4DECC1}"] }],
     schedule: [{
-      home: { teamId: 1, totalProjectedPointsLive: 101.25, rosterForCurrentScoringPeriod: { entries: [{ playerPoolEntry: { player: { fullName: "Davante Adams", defaultPositionId: 4, proTeamId: 20, stats: [{ seasonId: 2026, scoringPeriodId: 2, statSourceId: 1, statSplitTypeId: 0, appliedTotal: 14.44 }] } } }] } },
+      home: { teamId: 1, totalProjectedPointsLive: 101.25, rosterForCurrentScoringPeriod: { entries: [
+        { playerPoolEntry: { player: { fullName: "Davante Adams", defaultPositionId: 4, proTeamId: 20, stats: [{ seasonId: 2026, scoringPeriodId: 2, statSourceId: 1, statSplitTypeId: 0, appliedTotal: 14.44 }] } } },
+        { playerPoolEntry: { player: { fullName: "Other Player", defaultPositionId: 4, proTeamId: 2, stats: [{ seasonId: 2026, scoringPeriodId: 2, statSourceId: 1, statSplitTypeId: 0, appliedTotal: 10 }] } } },
+      ] } },
       away: { teamId: 2, totalProjectedPointsLive: 88.1, rosterForCurrentScoringPeriod: { entries: [] } },
     }],
   };
@@ -137,15 +140,16 @@ test("ESPN fantasy projections merge into current Sleeper matchups", async () =>
   assert.equal(calls, 1);
 
   const snapshot = fixture();
-  snapshot.metadata.startingSlots = ["WR"];
+  snapshot.metadata.startingSlots = ["WR", "WR"];
   snapshot.teams[0].canonicalOwnerIds = ["harrison"];
   snapshot.teams[1].canonicalOwnerIds = ["alex"];
-  snapshot.currentWeekData.entries[0].starters = [{ playerId: "p1", points: 0 }];
+  snapshot.currentWeekData.entries[0].starters = [{ playerId: "p1", points: 7 }, { playerId: "p3", points: 12 }];
   snapshot.currentWeekData.entries[1].starters = [{ playerId: "p2", points: 0 }];
-  const matchups = currentMatchups(snapshot, { p1: { name: "Davante Adams", nflTeam: "NYJ" }, p2: { name: "Other Player", nflTeam: "BUF" } }, espn.dashboard("2026", 2));
-  assert.equal(matchups.matchups[0].teams[0].projectedScore, 101.25);
+  const nfl = { fetchedAt: "2026-09-20T12:00:00Z", games: { NYJ: { state: "final" }, BUF: { state: "scheduled" } } };
+  const matchups = currentMatchups(snapshot, { p1: { name: "Davante Adams", nflTeam: "NYJ" }, p2: { name: "Away Player", nflTeam: "BUF" }, p3: { name: "Other Player", nflTeam: "BUF" } }, espn.dashboard("2026", 2), nfl);
+  assert.equal(matchups.matchups[0].teams[0].projectedScore, 19);
   assert.equal(matchups.matchups[0].teams[0].starters[0].projectedPoints, 14.44);
-  assert.equal(matchups.matchups[0].teams[1].projectedScore, 88.1);
+  assert.equal(matchups.matchups[0].teams[1].projectedScore, null);
 });
 
 test("store persists, deduplicates timestamps, archives corrections, recovers corrupted latest", async (t) => {
