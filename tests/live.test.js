@@ -45,7 +45,7 @@ test("starter counts exclude empty slots and do not equate zero scores with comp
 });
 
 function current(a = 10, b = 9, week = 2) {
-  return { week, status: "provisional", unpairedTeams: [], matchups: [{ matchupId: 1, margin: Math.abs(a - b), leaderRosterId: a === b ? null : a > b ? 1 : 2, teams: [{ rosterId: 1, teamName: "Alpha", score: a, projectedScore: 18, starters: [{ playerId: "1", slot: "QB", name: "Starter One", nflTeam: "JAX", points: a, projectedPoints: 12 }] }, { rosterId: 2, teamName: "Beta", score: b, projectedScore: 16, starters: [{ playerId: "2", slot: "QB", name: "Starter Two", nflTeam: "WAS", points: b, projectedPoints: 10 }] }] }] };
+  return { week, status: "provisional", unpairedTeams: [], matchups: [{ matchupId: 1, margin: Math.abs(a - b), leaderRosterId: a === b ? null : a > b ? 1 : 2, teams: [{ rosterId: 1, managerName: "Avery Owner", teamName: "Alpha", score: a, projectedScore: 18, starters: [{ playerId: "1", slot: "QB", name: "Starter One", nflTeam: "JAX", points: a, projectedPoints: 12 }] }, { rosterId: 2, managerName: "Blake Owner", teamName: "Beta", score: b, projectedScore: 16, starters: [{ playerId: "2", slot: "QB", name: "Starter Two", nflTeam: "WAS", points: b, projectedPoints: 10 }] }] }] };
 }
 test("activity groups score changes, handles ties/decreases, rejects late snapshots and caps the feed", () => {
   const feed = new LiveActivity();
@@ -91,6 +91,8 @@ test("live UI preserves focus, stable sorting, routes, paired starters, and acti
   const avatar = () => doc.createElement("span");
   renderLiveScores(stats, context, avatar, () => {});
   assert.match(doc.querySelector(".live-projected-value").textContent, /18.00/);
+  assert.match(doc.querySelector(".live-card-footer").textContent, /Avery Owner leads by 1.00/);
+  assert.doesNotMatch(doc.querySelector(".live-card-footer").textContent, /Alpha leads/);
   const sort = doc.getElementById("liveSort"); sort.value = "closest"; sort.dispatchEvent(new dom.window.Event("change"));
   assert.equal(doc.querySelector(".live-matchup-card").id, "matchup-2");
   doc.getElementById("matchup-1").focus();

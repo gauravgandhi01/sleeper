@@ -64,6 +64,10 @@ function ownerInitials(team) {
   return (parts.length > 1 ? `${parts[0][0]}${parts[1][0]}` : parts[0]?.slice(0, 2) || "OW").toUpperCase();
 }
 
+function ownerName(team) {
+  return team.managerName || team.teamName || "Owner";
+}
+
 function ownerIconSrc(team) {
   const ownerId = team.canonicalOwnerIds?.find((id) => OWNER_ICONS[id]);
   if (!ownerId) return null;
@@ -136,7 +140,7 @@ function scoreBar(matchup) {
 function marginLabel(matchup, status) {
   if (status === "awaiting_scoring") return "Awaiting scoring";
   const leader = matchup.teams.find((team) => team.rosterId === matchup.leaderRosterId);
-  return leader ? `${leader.teamName} ${status === "final" ? "won" : "leads"} by ${points(matchup.margin)}` : "Tied";
+  return leader ? `${ownerName(leader)} ${status === "final" ? "won" : "leads"} by ${points(matchup.margin)}` : "Tied";
 }
 
 function statusText(starter, nfl) {
