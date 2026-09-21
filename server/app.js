@@ -71,7 +71,7 @@ export async function createApp({ service, publicBaseUrl = "http://localhost:417
   app.get("/", (req, res) => { res.set("Cache-Control", "no-cache").type("html").send(html); });
   app.get("/vendor/lucide.js", (req, res) => res.sendFile(join(root, "node_modules/lucide/dist/umd/lucide.js")));
   for (const asset of ["live.js", "live-state.js"]) app.get(`/src/${asset}`, (req, res) => res.sendFile(join(root, "src", asset), { maxAge: 0 }));
-  for (const asset of ["styles.css", "src/app.js", "src/ui.js", "src/owner-icons.js", "src/theme.js", "logo.png", "logo_white.png", "public/favicon.svg", "public/og.png", ...Object.values(OWNER_ICONS)]) {
+  for (const asset of ["styles.css", "src/app.js", "src/ui.js", "src/owner-icons.js", "src/theme.js", "logo.png", "logo_white.png", "public/favicon.svg", "public/favicon-32.png", "public/apple-touch-icon.png", "public/icon-192.png", "public/icon-512.png", "public/site.webmanifest", "public/og.png", ...Object.values(OWNER_ICONS)]) {
     app.get(`/${asset}`, (req, res) => res.sendFile(join(root, asset), { maxAge: 0 }));
   }
   app.use((req, res) => res.status(404).json({ error: "Not found" }));

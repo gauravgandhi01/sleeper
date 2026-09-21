@@ -224,7 +224,9 @@ test("HTTP serves isolated assets, freshness, initialization failures and durabl
   for (const path of ["/server/index.js", "/src/sleeper.js", "/src/config.js", "/tests/backend.test.js", "/package.json", "/.data/latest.json", "/render.yaml", "/build_true_league_dashboard.py"]) {
     assert.equal((await fetch(base + path)).status, 404, path);
   }
-  assert.equal((await fetch(`${base}/src/ui.js`)).status, 200);
+  for (const path of ["/src/ui.js", "/public/favicon.svg", "/public/favicon-32.png", "/public/apple-touch-icon.png", "/public/site.webmanifest"]) {
+    assert.equal((await fetch(base + path)).status, 200, path);
+  }
   service.fetchSeason = async () => fixture(); advance(60000);
   const fresh = await fetch(`${base}/api/refresh`, { method: "POST" });
   assert.equal(fresh.headers.get("cache-control"), "no-store");
