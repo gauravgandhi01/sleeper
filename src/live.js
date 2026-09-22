@@ -68,6 +68,18 @@ function ownerName(team) {
   return team.managerName || team.teamName || "Owner";
 }
 
+function lockIcon(label = "Score locked") {
+  const icon = node("span", "live-lock", "\ud83d\udd12");
+  icon.title = label;
+  icon.setAttribute("aria-label", label);
+  return icon;
+}
+
+function teamLocked(team, nfl) {
+  const counts = starterCounts(team, nfl);
+  return Boolean(counts?.final > 0 && counts.live === 0 && counts.scheduled === 0 && counts.unknown === 0);
+}
+
 function ownerIconSrc(team) {
   const ownerId = team.canonicalOwnerIds?.find((id) => OWNER_ICONS[id]);
   if (!ownerId) return null;
@@ -94,15 +106,20 @@ function teamSide(team, context, makeAvatar) {
   side.append(makeAvatar(team));
   const copy = node("div", "live-team-copy");
   const name = node("strong", "", team.teamName);
+  if (team.managerName && team.managerName !== team.teamName) name.append(" ", node("span", "live-team-owner", team.managerName));
   const record = recordText(team.record);
-  if (record) name.append(" ", node("span", "live-team-record", record));
+  if (record) name.append(" ", node("span", "live-team-record", `(${record})`));
   copy.append(name);
   const counts = starterCounts(team, context.nflStatus);
-  copy.append(node("span", "live-team-status", counts ? `Finished ${counts.final} \u00b7 Live ${counts.live} \u00b7 Remaining ${counts.scheduled}${counts.unknown ? ` \u00b7 Unknown ${counts.unknown}` : ""}` : "Game status unavailable"));
+  const status = node("span", "live-team-status", counts ? `Finished ${counts.final} \u00b7 Live ${counts.live} \u00b7 Remaining ${counts.scheduled}${counts.unknown ? ` \u00b7 Unknown ${counts.unknown}` : ""}` : "Game status unavailable");
+  copy.append(status);
   const scoreStack = node("span", "live-score-stack");
+  const scoreLine = node("span", "live-score-line");
   const score = node("strong", "live-score-value", points(team.score));
   if (Date.now() - (activity.changed.get(team.rosterId) || 0) < 2500) score.classList.add("score-changed");
-  scoreStack.append(score);
+  scoreLine.append(score);
+  if (teamLocked(team, context.nflStatus)) scoreLine.append(lockIcon("Team score locked"));
+  scoreStack.append(scoreLine);
   if (Number.isFinite(team.projectedScore)) scoreStack.append(node("span", "live-projected-value", points(team.projectedScore)));
   side.append(copy, scoreStack);
   return side;
@@ -137,10 +154,16 @@ function scoreBar(matchup) {
   return bar;
 }
 
-function marginLabel(matchup, status) {
+function marginLabel(matchup, status, nfl) {
   if (status === "awaiting_scoring") return "Awaiting scoring";
   const leader = matchup.teams.find((team) => team.rosterId === matchup.leaderRosterId);
-  return leader ? `${ownerName(leader)} ${status === "final" ? "won" : "leads"} by ${points(matchup.margin)}` : "Tied";
+  const locked = matchup.teams.length === 2 && matchup.teams.every((team) => teamLocked(team, nfl));
+  if (!leader) return locked || status === "final" ? "Finished tied" : "Tied";
+  if (locked) {
+    const loser = matchup.teams.find((team) => team.rosterId !== leader.rosterId);
+    return `${ownerName(leader)} beat ${loser ? ownerName(loser) : "opponent"} by ${points(matchup.margin)}`;
+  }
+  return `${ownerName(leader)} ${status === "final" ? "won" : "leads"} by ${points(matchup.margin)}`;
 }
 
 function statusText(starter, nfl) {
@@ -163,7 +186,9 @@ function starterCell(starter, nfl) {
   const state = starter.playerId != null && statusFresh(nfl) ? gameFor(starter, nfl)?.state : null;
   const score = state === "scheduled" && starter.points === 0 ? "\u2014" : points(starter.points);
   const scoreStack = node("span", "live-player-score-stack");
-  copy.append(node("strong", "live-player-name", starter.name));
+  const name = node("strong", "live-player-name", starter.name);
+  if (state === "final") name.append(" ", lockIcon("Player score locked"));
+  copy.append(name);
   if (["live", "final", "scheduled"].includes(state)) cell.dataset.gameState = state;
   copy.append(node("span", "live-player-status", statusText(starter, nfl)));
   scoreStack.append(node("strong", "live-player-points", starter.playerId == null ? "\u2014" : score));
@@ -187,9 +212,10 @@ function renderDetail(root, matchup, current, context, makeAvatar) {
   matchup.teams.forEach((team) => {
     const side = teamSide(team, context, makeAvatar);
     side.classList.toggle("is-leading", team.rosterId === matchup.leaderRosterId);
+    side.classList.toggle("is-winner", team.rosterId === matchup.leaderRosterId && matchup.teams.every((item) => teamLocked(item, context.nflStatus)));
     summary.append(side);
   });
-  summary.append(node("p", "live-detail-margin", marginLabel(matchup, current.status)));
+  summary.append(node("p", "live-detail-margin", marginLabel(matchup, current.status, context.nflStatus)));
   root.append(summary);
   const roster = node("div", "live-roster");
   roster.setAttribute("role", "table"); roster.setAttribute("aria-label", "Starting lineup comparison");
@@ -282,10 +308,12 @@ function draw() {
       const card = node("button", "live-matchup-card"); card.type = "button"; card.id = `matchup-${id}`;
       card.setAttribute("aria-label", `${matchup.teams.map((team) => team.teamName).join(" versus ")}, view starters`);
       card.addEventListener("click", () => navigate(id, current.week));
-      matchup.teams.forEach((team) => { const side = teamSide(team, context, makeAvatar); side.classList.toggle("is-leading", team.rosterId === matchup.leaderRosterId); card.append(side); });
+      const locked = matchup.teams.every((team) => teamLocked(team, context.nflStatus));
+      card.classList.toggle("is-complete", locked);
+      matchup.teams.forEach((team) => { const side = teamSide(team, context, makeAvatar); side.classList.toggle("is-leading", team.rosterId === matchup.leaderRosterId); side.classList.toggle("is-winner", locked && team.rosterId === matchup.leaderRosterId); card.append(side); });
       card.append(scoreBar(matchup));
       const footer = node("span", "live-card-footer");
-      footer.append(node("span", "", marginLabel(matchup, current.status)), node("span", "live-chevron", "\u203a")); card.append(footer); grid.append(card);
+      footer.append(node("span", "", marginLabel(matchup, current.status, context.nflStatus)), node("span", "live-chevron", "\u203a")); card.append(footer); grid.append(card);
     }
     root.append(grid);
     if (current.unpairedTeams?.length) root.append(node("p", "section-note", `Opponent unavailable: ${current.unpairedTeams.map((team) => team.teamName).join(", ")}`));

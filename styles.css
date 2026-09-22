@@ -47,16 +47,36 @@
 .live-matchup-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
 .live-matchup-card { min-width: 0; padding: 8px 20px 0; text-align: left; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); color: var(--ink); cursor: pointer; overflow: hidden; }
 .live-matchup-card:hover { border-color: var(--muted); }
+.live-matchup-card.is-complete { border-color: color-mix(in srgb, var(--score-high) 46%, var(--line)); }
 .live-team { display: grid; grid-template-columns: 46px minmax(0, 1fr) auto; gap: 12px; align-items: center; min-height: 88px; }
 .live-team .team-avatar { width: 46px; height: 46px; flex: 0 0 46px; }
 .live-team-copy { min-width: 0; }
 .live-team-copy > strong { display: block; font-size: .98rem; overflow-wrap: anywhere; line-height: 1.3; }
+.live-team-owner { display: inline; margin-left: 6px; color: var(--muted); font-size: .78rem; font-weight: 650; }
 .live-team-record { display: inline-block; margin-left: 8px; color: var(--muted); font-size: .74rem; font-weight: 700; white-space: nowrap; }
 .live-team-status { display: block; margin-top: 6px; font-size: .68rem; color: var(--muted); }
+.live-lock { display: inline-block; margin-left: 3px; font-size: .82em; line-height: 1; vertical-align: -0.04em; }
 .live-score-stack { display: grid; justify-items: end; gap: 2px; }
+.live-score-line { display: inline-flex; align-items: baseline; justify-content: flex-end; gap: 4px; }
+.live-score-line .live-lock { margin-left: 0; font-size: .72rem; }
 .live-score-value { font-size: 1.85rem; line-height: 1.2; font-variant-numeric: tabular-nums; font-weight: 750; white-space: nowrap; }
 .live-projected-value { color: var(--muted); font-size: .68rem; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .live-team.is-leading .live-score-value { color: var(--live-green); }
+.live-team.is-winner .live-score-value { color: var(--score-high); }
+.live-team.is-winner .live-score-line { font-weight: 850; }
+.live-matchup-card.is-complete .live-team.is-winner {
+  margin-inline: -10px;
+  padding-inline: 10px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--score-high) 12%, var(--panel));
+  box-shadow: inset 3px 0 var(--score-high);
+}
+.live-matchup-card.is-complete .live-team.is-winner .live-score-line::before {
+  content: "\2191";
+  color: var(--score-high);
+  font-size: .78rem;
+  font-weight: 900;
+}
 .live-score-bar { position: relative; display: flex; gap: 3px; height: 8px; margin: 8px 0 16px; overflow: visible; border-radius: 999px; background: var(--subtle); }
 .live-score-bar > span:not(.live-score-bar-marker) { min-width: 0; background: var(--line); }
 .live-score-bar > span:not(.live-score-bar-marker):first-child { border-radius: 999px 0 0 999px; }
