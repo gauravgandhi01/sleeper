@@ -94,6 +94,28 @@ function nullableMax(values) {
   return values.length ? Math.max(...values) : null;
 }
 
+function matchupRecords(weeks, teams) {
+  const records = new Map(teams.map((team) => [team.rosterId, { wins: 0, losses: 0, ties: 0 }]));
+  for (const week of weeks) {
+    const groups = new Map();
+    for (const entry of week.entries || []) {
+      if (entry.matchupId == null || !records.has(entry.rosterId) || !Number.isFinite(entry.score)) continue;
+      groups.set(entry.matchupId, [...(groups.get(entry.matchupId) || []), entry]);
+    }
+    for (const sides of groups.values()) {
+      if (sides.length !== 2) continue;
+      const [a, b] = sides;
+      const aRecord = records.get(a.rosterId);
+      const bRecord = records.get(b.rosterId);
+      if (!aRecord || !bRecord) continue;
+      if (a.score === b.score) { aRecord.ties++; bRecord.ties++; }
+      else if (a.score > b.score) { aRecord.wins++; bRecord.losses++; }
+      else { bRecord.wins++; aRecord.losses++; }
+    }
+  }
+  return records;
+}
+
 function decorateWeek(week, teamByRoster, status) {
   if (!week) return null;
   const entries = week.entries
@@ -139,6 +161,7 @@ export function calculateStats(snapshot) {
     .sort((a, b) => a.week - b.week)
     .map((week) => decorateWeek(week, teamByRoster, "final"));
   const liveWeek = decorateWeek(snapshot.liveWeek, teamByRoster, "live");
+  const records = matchupRecords(snapshot.completedWeeks, snapshot.teams);
 
   const teamStats = snapshot.teams.map((team) => {
     const weekly = weeks
@@ -153,10 +176,17 @@ export function calculateStats(snapshot) {
     const bestScore = nullableMax(scores);
     const worstScore = nullableMin(scores);
     const games = weekly.length;
+    const record = records.get(team.rosterId) || { wins: 0, losses: 0, ties: 0 };
+    const decisions = record.wins + record.losses + record.ties;
 
     return {
       ...team,
       games,
+      wins: record.wins,
+      losses: record.losses,
+      ties: record.ties,
+      record: decisions ? `${record.wins}-${record.losses}${record.ties ? `-${record.ties}` : ""}` : "—",
+      winPct: decisions ? (record.wins + (0.5 * record.ties)) / decisions : null,
       weekly,
       total: games ? sum(scores) : null,
       average: mean(scores),

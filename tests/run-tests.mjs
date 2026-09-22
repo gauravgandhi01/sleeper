@@ -113,6 +113,8 @@ await test("2025 fixture reconciles the spreadsheet scoring model", () => {
   const g = stats.teams.find((row) => row.teamName === "G");
   close(g.total, 1794.04);
   close(g.average, 128.1457142857143);
+  assert.equal(g.record, "7-7");
+  close(g.winPct, 0.5);
   assert.equal(g.medianRecord, "9-5");
   close(g.medianWinPct, 9 / 14);
   close(g.averageRank, 4.142857142857143);

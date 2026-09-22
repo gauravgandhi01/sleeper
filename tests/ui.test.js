@@ -368,6 +368,12 @@ test("live matrix cells have no heat or median marker and do not rescale finaliz
   assert.ok(doc.querySelectorAll("#statbookTable .career-colored").length > 0);
   assert.equal(doc.querySelector("#statbookTable tbody tr").firstElementChild.classList.contains("career-colored"), false);
   assert.equal(doc.querySelector("#statbookTable .record-pill").parentElement.classList.contains("career-colored"), false);
+  assert.ok([...doc.querySelectorAll("#statbookTable thead button")].some((button) => button.textContent === "Good/Avg/Bad"));
+  assert.equal([...doc.querySelectorAll("#statbookTable thead .group-head")].some((head) => head.textContent === "Records"), true);
+  assert.ok([...doc.querySelectorAll("#statbookTable tbody tr:first-child .record-pill")].some((pill) => /^\d+-\d+/.test(pill.textContent)));
+  assert.ok([...doc.querySelectorAll("#statbookTable tbody tr:first-child td")].some((cell) => /^\d+ \/ \d+ \/ \d+$/.test(cell.textContent)));
+  assert.ok([...doc.querySelectorAll("#statbookTable tbody td")].some((cell) => /^\d+\.\d$/.test(cell.textContent)));
+  assert.ok([...doc.querySelectorAll("#statbookTable tbody td")].some((cell) => /^\d+\.\d{2}$/.test(cell.textContent)));
   assert.equal(doc.getElementById("statbookTable").compareDocumentPosition(doc.getElementById("leagueBenchmarks")) & Node.DOCUMENT_POSITION_FOLLOWING, Node.DOCUMENT_POSITION_FOLLOWING);
   assert.doesNotMatch(doc.getElementById("leagueBenchmarks").textContent, /Median pts > median|Finalized scores/);
   assert.match(doc.getElementById("leagueBenchmarks").textContent, /Season high/);

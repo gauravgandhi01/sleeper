@@ -543,14 +543,13 @@ function statbookColumns() {
     { group: "Scoring", label: "Best", key: "bestScore", format: point, color: "range", help: "Highest finalized weekly score." },
     { group: "Scoring", label: "Worst", key: "worstScore", format: point, color: "range", help: "Lowest finalized weekly score." },
     { group: "Scoring", label: "Score SD", key: "scoreDeviation", format: point, color: "inverse", help: "Sample standard deviation of weekly scores. Lower means more consistent scoring; unavailable with fewer than two weeks." },
-    { group: "Median", label: "Record", key: "medianWinPct", format: (_, team) => team.medianRecord, help: "Weekly median record: a win above the league median, a loss below it, and a tie at the median." },
+    { group: "Records", label: "W/L", key: "winPct", format: (_, team) => team.record, help: "Regular-season matchup record through finalized weeks." },
+    { group: "Records", label: "Median", key: "medianWinPct", format: (_, team) => team.medianRecord, help: "Weekly median record: a win above the league median, a loss below it, and a tie at the median." },
     { group: "Median", label: "Win %", key: "medianWinPct", format: percentage, color: "percent", help: "Median wins plus half of median ties, divided by finalized weeks." },
     { group: "Median", label: "Avg ±", key: "averageDeltaMedian", format: signed, color: "zero", help: "Average weekly score minus that week's league median." },
-    { group: "Median", label: "Good", key: "greatWeeks", format: integer, color: "range", help: "Weeks scoring more than one weekly sample standard deviation above the league median." },
-    { group: "Median", label: "Average", key: "averageWeeks", format: integer, help: "Weeks within one weekly sample standard deviation of the median, including both boundaries." },
-    { group: "Median", label: "Bad", key: "badWeeks", format: integer, color: "inverse", help: "Weeks scoring more than one weekly sample standard deviation below the league median." },
-    { group: "Rank", label: "Average", key: "averageRank", format: point, color: "inverse", help: "Average weekly points rank. Highest score ranks first; tied scores share a competition rank." },
-    { group: "Rank", label: "SD", key: "rankDeviation", format: rank, color: "inverse", help: "Sample standard deviation of weekly points ranks. Lower means steadier placement; requires at least two weeks." },
+    { group: "Median", label: "Good/Avg/Bad", key: "greatWeeks", format: (_, team) => `${integer(team.greatWeeks)} / ${integer(team.averageWeeks)} / ${integer(team.badWeeks)}`, help: "Weeks above, within, and below one weekly sample standard deviation from the league median." },
+    { group: "Rank", label: "Average", key: "averageRank", format: rank, color: "inverse", help: "Average weekly points rank. Highest score ranks first; tied scores share a competition rank." },
+    { group: "Rank", label: "SD", key: "rankDeviation", format: point, color: "inverse", help: "Sample standard deviation of weekly points ranks. Lower means steadier placement; requires at least two weeks." },
     { group: "Rank", label: "Best", key: "bestRank", format: integer, color: "inverse", help: "Best weekly points rank; lower is better." },
     { group: "Rank", label: "Worst", key: "worstRank", format: integer, color: "inverse", help: "Worst weekly points rank; lower is better." },
   ];
@@ -568,7 +567,7 @@ function renderStatbookTable(stats) {
   teamHead.scope = "col";
   teamHead.rowSpan = 2;
   groupRow.append(teamHead);
-  ["Scoring", "Median", "Rank"].forEach((group) => {
+  ["Scoring", "Records", "Median", "Rank"].forEach((group) => {
     const th = el("th", "group-head", group);
     th.scope = "colgroup";
     th.colSpan = columns.filter((column) => column.group === group).length;
@@ -584,7 +583,7 @@ function renderStatbookTable(stats) {
     });
     button.title = column.help;
     const help = el("span", "visually-hidden", column.help);
-    help.id = `statbook-help-${column.group}-${column.label.replaceAll(" ", "-")}`;
+    help.id = `statbook-help-${column.group}-${column.label.replace(/[^a-z0-9]+/gi, "-")}`;
     button.setAttribute("aria-describedby", help.id);
     th.append(button, help);
     labelRow.append(th);
@@ -598,11 +597,9 @@ function renderStatbookTable(stats) {
     row.append(identity);
     columns.forEach((column) => {
       const cell = el("td");
-      // Only record formatting needs the team; passing it as point's second
-      // argument accidentally coerces its precision to zero decimal places.
-      const rendered = column.label === "Record" ? column.format(team[column.key], team) : column.format(team[column.key]);
+      const rendered = column.format.length > 1 ? column.format(team[column.key], team) : column.format(team[column.key]);
       if (column.key === "averageDeltaMedian") cell.className = team[column.key] > 0 ? "positive" : team[column.key] < 0 ? "negative" : "";
-      if (column.label === "Record") cell.append(el("span", "record-pill", rendered));
+      if (column.group === "Records") cell.append(el("span", "record-pill", rendered));
       else cell.textContent = rendered;
       colorPerformance(cell, team[column.key], column, stats.teams);
       row.append(cell);
