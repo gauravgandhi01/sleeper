@@ -570,8 +570,6 @@ function statbookColumns() {
   return [
     { group: "Scoring", label: "Total", key: "total", format: point, color: "range", help: "Total points across finalized regular-season weeks; live scores are excluded." },
     { group: "Scoring", label: "Average", key: "average", format: point, color: "range", help: "Total points divided by finalized weeks." },
-    { group: "Scoring", label: "Best", key: "bestScore", format: point, color: "range", help: "Highest finalized weekly score." },
-    { group: "Scoring", label: "Worst", key: "worstScore", format: point, color: "range", help: "Lowest finalized weekly score." },
     { group: "Scoring", label: "Score SD", key: "scoreDeviation", format: point, color: "inverse", help: "Sample standard deviation of weekly scores. Lower means more consistent scoring; unavailable with fewer than two weeks." },
     { group: "Records", label: "W/L", key: "winPct", format: (_, team) => team.record, help: "Regular-season matchup record through finalized weeks." },
     { group: "Records", label: "Median", key: "medianWinPct", format: (_, team) => team.medianRecord, help: "Weekly median record: a win above the league median, a loss below it, and a tie at the median." },
@@ -581,8 +579,6 @@ function statbookColumns() {
     { group: "Median", label: "Good/Avg/Bad", key: "greatWeeks", format: (_, team) => `${integer(team.greatWeeks)} / ${integer(team.averageWeeks)} / ${integer(team.badWeeks)}`, help: "Weeks above, within, and below one weekly sample standard deviation from the league median." },
     { group: "Rank", label: "Average", key: "averageRank", format: rank, color: "inverse", help: "Average weekly points rank. Highest score ranks first; tied scores share a competition rank." },
     { group: "Rank", label: "SD", key: "rankDeviation", format: point, color: "inverse", help: "Sample standard deviation of weekly points ranks. Lower means steadier placement; requires at least two weeks." },
-    { group: "Rank", label: "Best", key: "bestRank", format: integer, color: "inverse", help: "Best weekly points rank; lower is better." },
-    { group: "Rank", label: "Worst", key: "worstRank", format: integer, color: "inverse", help: "Worst weekly points rank; lower is better." },
   ];
 }
 
