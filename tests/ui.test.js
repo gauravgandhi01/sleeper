@@ -359,11 +359,13 @@ test("live matrix cells have no heat or median marker and do not rescale finaliz
   const totals = [...doc.querySelectorAll("#matrixTable tbody tr")].map((row) => row.lastElementChild.textContent);
   assert.equal(doc.querySelector("#matrixTable thead tr").lastElementChild.textContent, "Total PF");
   assert.deepEqual(totals, payload.stats.teams.map((team) => team.total.toFixed(2)));
+  assert.ok(doc.querySelector("#matrixTable .matrix-result-win"));
+  assert.ok(doc.querySelector("#matrixTable .matrix-result-loss"));
   payload.stats.liveWeek = { ...structuredClone(payload.stats.weeks[0]), week: 2, status: "live" };
   payload.stats.liveWeek.entries.forEach((entry) => { entry.score = 99999; });
   ui.renderDashboard(payload.stats, payload);
   assert.deepEqual([...doc.querySelectorAll("#matrixTable .matrix-scored")].map((cell) => cell.getAttribute("style")), shades);
-  assert.equal(doc.querySelectorAll("#matrixTable .matrix-live-cell.matrix-scored, #matrixTable .matrix-live-cell .matrix-median-marker").length, 0);
+  assert.equal(doc.querySelectorAll("#matrixTable .matrix-live-cell.matrix-scored, #matrixTable .matrix-live-cell .matrix-median-marker, #matrixTable .matrix-live-cell .matrix-result-marker").length, 0);
   assert.match(doc.querySelector(".matrix-live-head").textContent, /Live/);
   assert.ok(doc.querySelectorAll("#statbookTable .career-colored").length > 0);
   assert.equal(doc.querySelector("#statbookTable tbody tr").firstElementChild.classList.contains("career-colored"), false);

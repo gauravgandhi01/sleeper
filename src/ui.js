@@ -455,7 +455,13 @@ function renderMatrixTable(stats) {
           marker.setAttribute("aria-hidden", "true");
           cell.append(marker, el("span", "visually-hidden", "; above weekly median"));
         }
-        cell.title = `Score ${point(entry.score)} · Weekly median ${point(week.leagueMedian)}${aboveMedian ? " · Above median" : ""}${week.status === "live" ? " · Provisional; excluded from aggregates" : ""}`;
+        const resultLabel = entry.outcome === "win" ? "Won matchup" : entry.outcome === "loss" ? "Lost matchup" : entry.outcome === "tie" ? "Tied matchup" : "";
+        if (week.status !== "live" && ["win", "loss"].includes(entry.outcome)) {
+          const result = el("span", `matrix-result-marker matrix-result-${entry.outcome}`, entry.outcome === "win" ? "✅" : "❌");
+          result.setAttribute("aria-hidden", "true");
+          cell.append(result, el("span", "visually-hidden", `; ${resultLabel}`));
+        }
+        cell.title = `Score ${point(entry.score)} · Weekly median ${point(week.leagueMedian)}${aboveMedian ? " · Above median" : ""}${resultLabel ? ` · ${resultLabel}` : ""}${week.status === "live" ? " · Provisional; excluded from aggregates" : ""}`;
       }
       if (uiState.matrixMode === "score" && Number.isFinite(entry?.score) && Number.isFinite(entry?.rank)) {
         cell.classList.add("matrix-ranked");

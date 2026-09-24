@@ -121,6 +121,19 @@ function decorateWeek(week, teamByRoster, status) {
   const entries = week.entries
     .filter((entry) => teamByRoster.has(entry.rosterId) && Number.isFinite(entry.score))
     .sort((a, b) => a.rosterId - b.rosterId);
+  const matchupGroups = new Map();
+  for (const entry of entries) {
+    if (entry.matchupId == null) continue;
+    matchupGroups.set(entry.matchupId, [...(matchupGroups.get(entry.matchupId) || []), entry]);
+  }
+  const outcomeFor = (entry) => {
+    const sides = matchupGroups.get(entry.matchupId);
+    if (!sides || sides.length !== 2) return null;
+    const opponent = sides.find((side) => side.rosterId !== entry.rosterId);
+    if (!opponent) return null;
+    if (entry.score === opponent.score) return "tie";
+    return entry.score > opponent.score ? "win" : "loss";
+  };
   const scores = entries.map((entry) => entry.score);
   const leagueAverage = mean(scores);
   const leagueMedian = median(scores);
@@ -138,6 +151,7 @@ function decorateWeek(week, teamByRoster, status) {
       return {
         ...entry,
         team: teamByRoster.get(entry.rosterId),
+        outcome: outcomeFor(entry),
         deltaMedian,
         rank: ranks[index],
         // Retain the internal "great" key for API compatibility; the UI calls it Good.

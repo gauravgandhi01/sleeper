@@ -165,6 +165,14 @@ await test("median ties are half-wins and zero scores remain valid", () => {
   assert.equal(zero.scoreDeviation, null);
 });
 
+await test("weekly entries expose matchup win/loss outcomes", () => {
+  const stats = calculateStats(snapshotFromScores(["Winner", "Loser"], [[101], [99]]));
+  const winner = stats.weeks[0].entries.find((entry) => entry.team.teamName === "Winner");
+  const loser = stats.weeks[0].entries.find((entry) => entry.team.teamName === "Loser");
+  assert.equal(winner.outcome, "win");
+  assert.equal(loser.outcome, "loss");
+});
+
 function response(body, status = 200) {
   return { ok: status >= 200 && status < 300, status, json: async () => body };
 }

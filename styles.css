@@ -518,6 +518,8 @@ h2 { max-width: 640px; font-size: clamp(1.45rem, 3vw, 2.35rem); }
 .matrix-table tbody td.matrix-scored { position: relative; background-color: color-mix(in srgb, var(--score-color) var(--score-shade), var(--panel)); }
 .matrix-above-median { font-weight: 850; }
 .matrix-median-marker { position: absolute; right: 2px; top: 1px; font-size: .75rem; font-weight: 900; line-height: 1; color: var(--ink); }
+.matrix-result-marker { position: absolute; left: 3px; top: 5px; font-size: .48rem; line-height: 1; opacity: .82; }
+.matrix-result-loss { filter: grayscale(.25); opacity: .72; }
 .matrix-ranked { position: relative; }
 .matrix-rank { position: absolute; left: 3px; bottom: 4px; color: var(--ink); font-size: .55rem; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; }
 .trend-owner-legend { display: flex; flex-wrap: wrap; gap: 8px 16px; max-width: 720px; }
