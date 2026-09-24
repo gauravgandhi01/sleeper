@@ -223,12 +223,19 @@ test("season UI: archive recap, owner profiles, links, visible-tab keyboard navi
   assert.equal(doc.activeElement.id, "headToHeadTab");
   const mode = [...doc.querySelectorAll("#matrixControls button")].find((button) => button.textContent.includes("Rank"));
   mode.click();
-  assert.equal(doc.querySelectorAll("#trendControls input").length, 0);
+  assert.equal(doc.querySelectorAll("#trendControls input").length, 10);
   assert.equal(doc.querySelectorAll("#trendControls .owner-icon").length, 10);
   assert.ok([...doc.querySelectorAll("#trendControls .owner-icon")].every((img) => img.alt));
   assert.equal(doc.querySelectorAll("#trendChart .chart-line").length, 10);
   const originalLine = doc.querySelector('#trendChart [data-owner="gaurav"]');
   const originalStyle = [originalLine.getAttribute("stroke"), originalLine.getAttribute("stroke-dasharray")];
+  const trendGaurav = [...doc.querySelectorAll("#trendControls label")].find((label) => label.title === "Gaurav Gandhi");
+  trendGaurav.querySelector("input").checked = false;
+  trendGaurav.querySelector("input").dispatchEvent(new window.Event("change"));
+  assert.equal(doc.querySelector('#trendChart [data-owner="gaurav"]'), null);
+  trendGaurav.querySelector("input").checked = true;
+  trendGaurav.querySelector("input").dispatchEvent(new window.Event("change"));
+  assert.ok(doc.querySelector('#trendChart [data-owner="gaurav"]'));
   const past = archive.dashboard("2018");
   ui.prepareSeason("2018", true, "gaurav");
   ui.renderDashboard(past.stats, past);
@@ -246,7 +253,7 @@ test("season UI: archive recap, owner profiles, links, visible-tab keyboard navi
   filter.checked = false;
   filter.dispatchEvent(new window.Event("change"));
   assert.equal(doc.querySelectorAll("#ownersContent tbody tr").length, 14);
-  assert.equal(doc.querySelectorAll("#ownersContent .owner-icon").length, 10);
+  assert.equal(doc.querySelectorAll("#ownersContent tbody .owner-icon").length, 10);
   const ownerRow = (name) => [...doc.querySelectorAll("#ownersContent tbody tr")].find((row) => row.textContent.startsWith(name));
   assert.match(ownerRow("Ben Dross").querySelector("img").src, /dross\.png$/);
   assert.match(ownerRow("Ethan Miller").querySelector("img").src, /ethan_miller\.png$/);
@@ -380,8 +387,7 @@ test("live matrix cells have no heat or median marker and do not rescale finaliz
   assert.equal(doc.querySelector("#statbookTable tbody tr").firstElementChild.classList.contains("career-colored"), false);
   assert.equal(doc.querySelector("#statbookTable .record-pill").parentElement.classList.contains("career-colored"), false);
   assert.ok([...doc.querySelectorAll("#statbookTable thead button")].some((button) => button.textContent === "Good/Avg/Bad"));
-  assert.ok([...doc.querySelectorAll("#statbookTable thead button")].some((button) => button.textContent === "Lucky W"));
-  assert.ok([...doc.querySelectorAll("#statbookTable thead button")].some((button) => button.textContent === "Unlucky L"));
+  assert.ok([...doc.querySelectorAll("#statbookTable thead button")].some((button) => button.textContent === "Lucky/Unlucky"));
   assert.equal([...doc.querySelectorAll("#statbookTable thead .group-head")].some((head) => head.textContent === "Records"), true);
   assert.ok([...doc.querySelectorAll("#statbookTable tbody tr:first-child .record-pill")].some((pill) => /^\d+-\d+/.test(pill.textContent)));
   assert.ok([...doc.querySelectorAll("#statbookTable tbody tr:first-child td")].some((cell) => /^\d+ \/ \d+ \/ \d+$/.test(cell.textContent)));
@@ -409,8 +415,7 @@ test("owner sorting, era profiles, conditional colors and matching-cache fallbac
   doc.getElementById("currentOwnersOnly").checked = false;
   ui.renderOwners(all);
   const header = (label) => [...doc.querySelectorAll("#ownersContent thead button")].find((button) => button.textContent.replace(/[↑↓]/g, "").trim() === label);
-  assert.ok(header("Lucky W"));
-  assert.ok(header("Unlucky L"));
+  assert.ok(header("Lucky/Unlucky"));
   header("PF").click();
   assert.match(doc.querySelector("#ownersContent .owner-button").textContent, new RegExp([...all.owners].sort((a, b) => b.pointsFor - a.pointsFor)[0].name));
   assert.equal(doc.activeElement, header("PF"));
@@ -422,7 +427,14 @@ test("owner sorting, era profiles, conditional colors and matching-cache fallbac
   assert.ok(doc.querySelector("#ownersContent .owner-trend-chart"));
   assert.ok(doc.querySelector("#ownersContent .owner-trend-avatar"));
   assert.ok(doc.querySelector("#ownersContent .owner-trend-grave"));
-  assert.equal(doc.querySelectorAll("#ownersContent .trend-owner-key").length, 0);
+  assert.ok(doc.querySelectorAll("#ownersContent .owner-trend-filter input").length > 0);
+  const ownerTrendGaurav = [...doc.querySelectorAll("#ownersContent .owner-trend-filter label")].find((label) => label.title === "Gaurav Gandhi");
+  ownerTrendGaurav.querySelector("input").checked = false;
+  ownerTrendGaurav.querySelector("input").dispatchEvent(new window.Event("change"));
+  assert.equal(doc.querySelector('#ownersContent .owner-trend-chart [data-owner="gaurav"]'), null);
+  ownerTrendGaurav.querySelector("input").checked = true;
+  ownerTrendGaurav.querySelector("input").dispatchEvent(new window.Event("change"));
+  assert.ok(doc.querySelector('#ownersContent .owner-trend-chart [data-owner="gaurav"]'));
   const kyle = [...doc.querySelectorAll(".owner-button")].find((button) => button.textContent.includes("Kyle"));
   kyle.click();
   ui.prepareOwnerEra("ten-team");
@@ -453,7 +465,7 @@ test("owner sorting, era profiles, conditional colors and matching-cache fallbac
   neutral.owners.forEach((owner) => { owner.pointsFor = 100; owner.winPct = 0.5; owner.averageDeltaMedian = 0; });
   ui.renderOwners(neutral);
   const first = doc.querySelector("#ownersContent tbody tr");
-  for (const index of [3, 6, 11]) assert.equal(first.children[index].style.getPropertyValue("--score-shade"), "0.00%");
+  for (const index of [3, 5, 10]) assert.equal(first.children[index].style.getPropertyValue("--score-shade"), "0.00%");
 });
 
 test("era switching ignores late responses and never presents all-era totals as ten-team", async (t) => {

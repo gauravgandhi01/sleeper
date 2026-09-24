@@ -21,6 +21,8 @@ let ownerEra = "all";
 const ownerSort = { key: "name", direction: "asc" };
 const ownerSeasonSort = { key: "season", direction: "desc" };
 const ownerCache = new Map();
+const trendHiddenOwners = new Set();
+const ownerTrendHiddenOwners = new Set();
 const OWNER_ORDER = ["jake", "dylan", "gaurav", "zach", "kyle", "alex", "harrison", "will", "ben", "ethan", "cameron", "pyo-ethan-former", "ben-stanish", "zane"];
 
 function ownerLineStyle(team) {
@@ -28,6 +30,10 @@ function ownerLineStyle(team) {
   const known = OWNER_ORDER.indexOf(id);
   const index = known >= 0 ? known : [...id].reduce((sum, char) => sum + char.charCodeAt(0), 0);
   return { color: COLORS[index % COLORS.length], dash: ["", "7 3", "2 3"][Math.floor(index / COLORS.length) % 3] };
+}
+
+function trendOwnerId(team) {
+  return String(team.canonicalOwnerIds?.[0] || team.id || `roster:${team.rosterId}`);
 }
 
 function el(tag, className = "", text = null) {
@@ -277,11 +283,22 @@ function renderTrendControls(stats) {
   const root = byId("trendControls");
   root.replaceChildren();
   stats.teams.forEach((team) => {
-    const label = el("span", "trend-owner-key");
+    const id = trendOwnerId(team);
+    const label = el("label", "trend-owner-key");
     const style = ownerLineStyle(team);
+    label.style.setProperty("--team-color", style.color);
+    label.title = team.managerName;
+    const input = el("input");
+    input.type = "checkbox";
+    input.checked = !trendHiddenOwners.has(id);
+    input.addEventListener("change", () => {
+      if (input.checked) trendHiddenOwners.delete(id);
+      else trendHiddenOwners.add(id);
+      renderTrend(stats);
+    });
     const swatch = svgEl("svg", { width: 28, height: 12, "aria-hidden": "true" });
     swatch.append(svgEl("line", { x1: 0, x2: 28, y1: 6, y2: 6, stroke: style.color, "stroke-width": 3, "stroke-dasharray": style.dash }));
-    label.append(swatch, compactOwner({ id: team.canonicalOwnerIds?.length === 1 ? team.canonicalOwnerIds[0] : null, name: team.managerName }));
+    label.append(input, swatch, compactOwner({ id: team.canonicalOwnerIds?.length === 1 ? team.canonicalOwnerIds[0] : null, name: team.managerName }));
     root.append(label);
   });
 }
@@ -294,7 +311,7 @@ function renderTrendChart(stats) {
     return;
   }
 
-  const series = stats.teams.map((team) => {
+  const series = stats.teams.filter((team) => !trendHiddenOwners.has(trendOwnerId(team))).map((team) => {
     let total = 0;
     const points = stats.weeks.map((week, index) => {
       const score = week.entries.find((entry) => entry.rosterId === team.rosterId)?.score;
@@ -304,6 +321,10 @@ function renderTrendChart(stats) {
     }).filter(Boolean);
     return { team, points };
   });
+  if (!series.length) {
+    root.append(emptyState("No teams selected", "Use the owner filters above the chart to add teams back.", "–"));
+    return;
+  }
   const values = series.flatMap(({ points }) => points.map((entry) => entry.score));
   let yMin = Math.floor((Math.min(0, ...values) - 10) / 25) * 25;
   let yMax = Math.ceil((Math.max(0, ...values) + 10) / 25) * 25;
@@ -346,7 +367,7 @@ function renderTrendChart(stats) {
   series.forEach(({ team, points }) => {
     const { color, dash } = ownerLineStyle(team);
     const path = points.map((entry, index) => `${index ? "L" : "M"}${x(entry.index)},${y(entry.score)}`).join(" ");
-    svg.append(svgEl("path", { class: "chart-line", d: path, stroke: color, "stroke-dasharray": dash, "data-owner": team.canonicalOwnerIds?.[0] || team.rosterId }));
+    svg.append(svgEl("path", { class: "chart-line", d: path, stroke: color, "stroke-dasharray": dash, "data-owner": trendOwnerId(team) }));
     points.forEach((entry) => {
       const description = `${team.managerName}, through Week ${entry.week}: ${signed(entry.score)} cumulative vs median`;
       const dot = svgEl("circle", { class: "chart-dot", cx: x(entry.index), cy: y(entry.score), r: 5, fill: color, tabindex: 0, "aria-label": description });
@@ -554,8 +575,7 @@ function statbookColumns() {
     { group: "Scoring", label: "Score SD", key: "scoreDeviation", format: point, color: "inverse", help: "Sample standard deviation of weekly scores. Lower means more consistent scoring; unavailable with fewer than two weeks." },
     { group: "Records", label: "W/L", key: "winPct", format: (_, team) => team.record, help: "Regular-season matchup record through finalized weeks." },
     { group: "Records", label: "Median", key: "medianWinPct", format: (_, team) => team.medianRecord, help: "Weekly median record: a win above the league median, a loss below it, and a tie at the median." },
-    { group: "Records", label: "Lucky W", key: "luckyWins", format: integer, help: "Wins while scoring below that week's league median." },
-    { group: "Records", label: "Unlucky L", key: "unluckyLosses", format: integer, help: "Losses while scoring above that week's league median." },
+    { group: "Records", label: "Lucky/Unlucky", key: "luckyWins", format: (_, team) => `${integer(team.luckyWins)} / ${integer(team.unluckyLosses)}`, help: "Lucky wins while scoring below that week's league median, slash unlucky losses while scoring above it." },
     { group: "Median", label: "Win %", key: "medianWinPct", format: percentage, color: "percent", help: "Median wins plus half of median ties, divided by finalized weeks." },
     { group: "Median", label: "Avg ±", key: "averageDeltaMedian", format: signed, color: "zero", help: "Average weekly score minus that week's league median." },
     { group: "Median", label: "Good/Avg/Bad", key: "greatWeeks", format: (_, team) => `${integer(team.greatWeeks)} / ${integer(team.averageWeeks)} / ${integer(team.badWeeks)}`, help: "Weeks above, within, and below one weekly sample standard deviation from the league median." },
@@ -978,7 +998,10 @@ function careerTable(columns, rows, sort, captionText) {
     const result = missingA ? 0 : typeof av === "string" && sort.key !== "season" ? av.localeCompare(bv) : Number(av) - Number(bv);
     return (sort.direction === "asc" ? result : -result) || String(a.name || a.teamName || "").localeCompare(String(b.name || b.teamName || "")) || Number(b.season || 0) - Number(a.season || 0);
   });
-  const values = sorted.map((row) => columns.map((column) => column.render ? column.render(row) : column.format(row[column.key])));
+  const values = sorted.map((row) => columns.map((column) => {
+    if (column.render) return column.render(row);
+    return column.format.length > 1 ? column.format(row[column.key], row) : column.format(row[column.key]);
+  }));
   const wrap = simpleTable(columns.map((column) => column.label), values, captionText);
   const table = wrap.querySelector("table");
   table.classList.add("owner-career-table");
@@ -1003,12 +1026,45 @@ function careerTable(columns, rows, sort, captionText) {
   return wrap;
 }
 
+function ownerTrendFilter(owners) {
+  const controls = el("div", "team-filter owner-trend-filter");
+  owners.forEach((owner) => {
+    const style = ownerLineStyle({ canonicalOwnerIds: [owner.id], rosterId: owner.id });
+    const label = el("label", "trend-owner-key");
+    label.style.setProperty("--team-color", style.color);
+    label.title = owner.name;
+    const input = el("input");
+    input.type = "checkbox";
+    input.checked = !ownerTrendHiddenOwners.has(owner.id);
+    input.addEventListener("change", () => {
+      if (input.checked) ownerTrendHiddenOwners.delete(owner.id);
+      else ownerTrendHiddenOwners.add(owner.id);
+      renderOwners(ownerData);
+    });
+    label.append(input, compactOwner(owner));
+    controls.append(label);
+  });
+  return controls;
+}
+
 function renderOwnerMedianTrend(root, owners, qualifyingSeasons) {
   const years = [...(qualifyingSeasons || [])].map((row) => String(row.season)).sort((a, b) => Number(a) - Number(b));
   const rows = owners.filter((owner) => owner.seasons?.length);
   if (!years.length || !rows.length) return;
   const yearIndex = new Map(years.map((year, index) => [year, index]));
-  const series = rows.map((owner) => {
+  const section = el("section", "owner-trend-section");
+  const header = el("div", "owner-trend-header");
+  header.append(el("h3", "", "Cumulative vs median"), ownerTrendFilter(rows));
+  section.append(header);
+
+  const visibleRows = rows.filter((owner) => !ownerTrendHiddenOwners.has(owner.id));
+  if (!visibleRows.length) {
+    section.append(emptyState("No owners selected", "Use the owner filters above the chart to add owners back.", "–"));
+    root.append(section);
+    return;
+  }
+
+  const series = visibleRows.map((owner) => {
     let total = 0;
     const seasons = [...owner.seasons].sort((a, b) => Number(a.season) - Number(b.season));
     const points = seasons.map((season) => {
@@ -1032,8 +1088,6 @@ function renderOwnerMedianTrend(root, owners, qualifyingSeasons) {
   const x = (index) => margin.left + (years.length === 1 ? plotWidth / 2 : (index / (years.length - 1)) * plotWidth);
   const y = (value) => margin.top + ((yMax - value) / (yMax - yMin)) * plotHeight;
 
-  const section = el("section", "owner-trend-section");
-  section.append(el("h3", "", "Cumulative vs median"));
   const wrap = el("div", "chart-wrap owner-trend-chart");
   const svg = svgEl("svg", { class: "trend-svg", viewBox: `0 0 ${width} ${height}`, role: "img", "aria-labelledby": "ownerTrendTitle ownerTrendDesc" });
   svg.append(svgEl("title", { id: "ownerTrendTitle" }), svgEl("desc", { id: "ownerTrendDesc" }));
@@ -1095,8 +1149,7 @@ function careerColumns(qualifyingSeasons = []) {
     { label: "Playoffs", key: "postseasonAppearances", render: (row) => playoffTimeline(row, qualifyingSeasons), help: "Chronological playoff results for seasons in the selected era: check means playoff appearance, X means missed playoffs, dash means not played or not yet available." },
     { label: "Record", key: "winPct", render: recordText, help: "Regular-season head-to-head record; sorted by win percentage." },
     { label: "Win %", key: "winPct", format: percentage, color: "percent", help: "Wins plus half of ties divided by decided games; neutral at 50%." },
-    { label: "Lucky W", key: "luckyWins", format: integer, help: "Wins while scoring below that week's league median." },
-    { label: "Unlucky L", key: "unluckyLosses", format: integer, help: "Losses while scoring above that week's league median." },
+    { label: "Lucky/Unlucky", key: "luckyWins", format: (_, row) => `${integer(row.luckyWins)} / ${integer(row.unluckyLosses)}`, help: "Lucky wins while scoring below that week's league median, slash unlucky losses while scoring above it." },
     { label: "PF", key: "pointsFor", format: point, color: "range", help: "Total points across qualifying finalized weeks; colors compare displayed rows." },
     { label: "PF/G", key: "pointsPerGame", format: point, color: "range", help: "Total points divided by scored weeks, not an average of season averages." },
     { label: "PA/G", key: "pointsAgainstPerGame", format: point, color: "inverse", help: "Opponent points per finalized regular-season game; lower is better." },
@@ -1138,7 +1191,10 @@ export function renderOwners(payload) {
     else profileHeader.append(profileTitle);
     root.append(profileHeader);
     if (!owner?.seasons.length) { root.append(emptyState("No seasons in this era", "Choose All seasons to view this owner's career.")); return; }
-    const totals = simpleTable(careerStats.map((column) => column.label), [careerStats.map((column) => column.render ? column.render(owner) : column.format(owner[column.key]))], "Career totals");
+    const totals = simpleTable(careerStats.map((column) => column.label), [careerStats.map((column) => {
+      if (column.render) return column.render(owner);
+      return column.format.length > 1 ? column.format(owner[column.key], owner) : column.format(owner[column.key]);
+    })], "Career totals");
     totals.querySelectorAll("thead th").forEach((th, index) => {
       const column = careerStats[index];
       th.title = column.help;
