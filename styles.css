@@ -406,6 +406,7 @@ h2 { max-width: 640px; font-size: clamp(1.45rem, 3vw, 2.35rem); }
 .team-copy { min-width: 0; }
 .team-copy strong, .team-copy span { display: block; }
 .team-copy strong { max-width: 210px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .92rem; }
+.team-copy span .team-record-inline { display: inline; margin-left: 4px; color: var(--muted); font-size: .9em; font-weight: 750; white-space: nowrap; }
 .team-copy span { max-width: 210px; margin-top: 1px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); font-size: .76rem; }
 
 .team-avatar {

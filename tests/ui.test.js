@@ -207,6 +207,12 @@ test("season UI: archive recap, owner profiles, links, visible-tab keyboard navi
   assert.equal(doc.getElementById("statusTitle").textContent, "ESPN archive");
   assert.match(doc.getElementById("seasonRange").textContent, /14.*10 teams/);
   assert.equal(doc.querySelectorAll("#matrixTable tbody tr").length, 10);
+  payload.stats.teams[0].canonicalOwnerIds = ["gaurav"];
+  payload.stats.teams[0].avatarUrl = "https://example.com/sleeper-avatar.png";
+  ui.renderDashboard(payload.stats, payload);
+  assert.equal(doc.querySelector("#matrixTable .team-avatar img")?.getAttribute("src"), "./img/avatars/gaurav.png");
+  assert.equal(doc.querySelector("#matrixTable .team-copy > strong .team-record-inline"), null);
+  assert.match(doc.querySelector("#matrixTable .team-copy > span .team-record-inline")?.textContent, /^\(\d+-\d+/);
   assert.match(doc.getElementById("seasonRecap").textContent, /Champion/);
   doc.getElementById("overviewTab").dispatchEvent(new window.KeyboardEvent("keydown", { key: "ArrowRight", bubbles: true }));
   assert.equal(doc.activeElement.id, "weeklyTab");

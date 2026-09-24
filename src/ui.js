@@ -157,8 +157,8 @@ function teamInitials(team) {
 
 function makeAvatar(team) {
   const avatar = el("span", "team-avatar", teamInitials(team));
-  const fallbackOwnerId = team.canonicalOwnerIds?.find((id) => OWNER_ICONS[id]);
-  const imageUrl = team.avatarUrl || ownerIconSrc(fallbackOwnerId);
+  const ownerId = team.canonicalOwnerIds?.find((id) => OWNER_ICONS[id]);
+  const imageUrl = ownerIconSrc(ownerId) || team.avatarUrl;
   if (imageUrl) {
     const image = el("img");
     image.src = imageUrl;
@@ -174,7 +174,10 @@ function makeTeamLabel(team) {
   const label = el("span", "team-label");
   const copy = el("span", "team-copy");
   copy.title = `${team.teamName} · ${team.managerName}`;
-  copy.append(el("strong", "", team.teamName), el("span", "", team.managerName));
+  const name = el("strong", "", team.teamName);
+  const manager = el("span", "", team.managerName);
+  if (team.record && team.record !== "—") manager.append(" ", el("span", "team-record-inline", `(${team.record})`));
+  copy.append(name, manager);
   label.append(makeAvatar(team), copy);
   return label;
 }
