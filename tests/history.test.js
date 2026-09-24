@@ -75,6 +75,31 @@ test("original precision resolves the 2020 rounded tie and true ties still count
   assert.equal(seasonRecords(tied).find((row) => row.rosterId === 2).ties, 1);
 });
 
+test("season and career records track lucky wins and unlucky losses", () => {
+  const current = {
+    metadata: { season: "2026", teamCount: 10, source: "sleeper", status: "complete" },
+    teams: [
+      { rosterId: 1, canonicalOwnerIds: ["lucky"], managerName: "Lucky", teamName: "Lucky" },
+      { rosterId: 2, canonicalOwnerIds: ["low-loss"], managerName: "Low loss", teamName: "Low loss" },
+      { rosterId: 3, canonicalOwnerIds: ["unlucky"], managerName: "Unlucky", teamName: "Unlucky" },
+      { rosterId: 4, canonicalOwnerIds: ["high-win"], managerName: "High win", teamName: "High win" },
+    ],
+    completedWeeks: [{ entries: [
+      { rosterId: 1, matchupId: 1, score: 90 },
+      { rosterId: 2, matchupId: 1, score: 80 },
+      { rosterId: 3, matchupId: 2, score: 200 },
+      { rosterId: 4, matchupId: 2, score: 210 },
+    ] }],
+    liveWeek: null,
+  };
+  const records = seasonRecords(current);
+  assert.equal(records.find((row) => row.rosterId === 1).luckyWins, 1);
+  assert.equal(records.find((row) => row.rosterId === 3).unluckyLosses, 1);
+  const careers = history.careers(current, { era: "ten-team" });
+  assert.equal(careers.owners.find((owner) => owner.id === "lucky").luckyWins, 1);
+  assert.equal(careers.owners.find((owner) => owner.id === "unlucky").unluckyLosses, 1);
+});
+
 test("ten explicit Sleeper links and separate former Ethan identity", () => {
   const active = owners.filter((owner) => owner.sleeperId);
   assert.equal(active.length, 10);

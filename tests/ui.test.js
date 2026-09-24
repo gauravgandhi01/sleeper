@@ -26,6 +26,9 @@ test("record and rivalry panels render archive results, empty selectors, sorting
   ui.renderRecords(records);
   assert.equal(doc.querySelectorAll(".record-section").length, 11);
   assert.match(doc.getElementById("recordsStatus").textContent, /Current-season results unavailable/);
+  const closestSection = [...doc.querySelectorAll(".record-section")].find((section) => section.querySelector("h3")?.textContent === "Closest matchup");
+  assert.equal(closestSection.querySelector(".record-matchup").textContent, `${records.records.closestMatchup[0].home.ownerName}vs${records.records.closestMatchup[0].away.ownerName}`);
+  assert.match(closestSection.querySelector(".record-row").textContent, new RegExp(`${records.records.closestMatchup[0].home.teamName}.*${records.records.closestMatchup[0].away.teamName}`));
   const link = doc.querySelector("#recordsContent a");
   const params = new URL(link.href).searchParams;
   link.click();
@@ -377,6 +380,8 @@ test("live matrix cells have no heat or median marker and do not rescale finaliz
   assert.equal(doc.querySelector("#statbookTable tbody tr").firstElementChild.classList.contains("career-colored"), false);
   assert.equal(doc.querySelector("#statbookTable .record-pill").parentElement.classList.contains("career-colored"), false);
   assert.ok([...doc.querySelectorAll("#statbookTable thead button")].some((button) => button.textContent === "Good/Avg/Bad"));
+  assert.ok([...doc.querySelectorAll("#statbookTable thead button")].some((button) => button.textContent === "Lucky W"));
+  assert.ok([...doc.querySelectorAll("#statbookTable thead button")].some((button) => button.textContent === "Unlucky L"));
   assert.equal([...doc.querySelectorAll("#statbookTable thead .group-head")].some((head) => head.textContent === "Records"), true);
   assert.ok([...doc.querySelectorAll("#statbookTable tbody tr:first-child .record-pill")].some((pill) => /^\d+-\d+/.test(pill.textContent)));
   assert.ok([...doc.querySelectorAll("#statbookTable tbody tr:first-child td")].some((cell) => /^\d+ \/ \d+ \/ \d+$/.test(cell.textContent)));
@@ -404,6 +409,8 @@ test("owner sorting, era profiles, conditional colors and matching-cache fallbac
   doc.getElementById("currentOwnersOnly").checked = false;
   ui.renderOwners(all);
   const header = (label) => [...doc.querySelectorAll("#ownersContent thead button")].find((button) => button.textContent.replace(/[↑↓]/g, "").trim() === label);
+  assert.ok(header("Lucky W"));
+  assert.ok(header("Unlucky L"));
   header("PF").click();
   assert.match(doc.querySelector("#ownersContent .owner-button").textContent, new RegExp([...all.owners].sort((a, b) => b.pointsFor - a.pointsFor)[0].name));
   assert.equal(doc.activeElement, header("PF"));
@@ -412,6 +419,10 @@ test("owner sorting, era profiles, conditional colors and matching-cache fallbac
   assert.ok(doc.querySelectorAll("#ownersContent .career-colored").length > 0);
   assert.doesNotMatch(doc.getElementById("ownersContent").textContent, /Former/);
   assert.ok([...doc.querySelectorAll(".owner-button")].some((button) => button.textContent.includes("Daniel Pyo / Ethan Miller") && button.textContent.includes("🪦")));
+  assert.ok(doc.querySelector("#ownersContent .owner-trend-chart"));
+  assert.ok(doc.querySelector("#ownersContent .owner-trend-avatar"));
+  assert.ok(doc.querySelector("#ownersContent .owner-trend-grave"));
+  assert.equal(doc.querySelectorAll("#ownersContent .trend-owner-key").length, 0);
   const kyle = [...doc.querySelectorAll(".owner-button")].find((button) => button.textContent.includes("Kyle"));
   kyle.click();
   ui.prepareOwnerEra("ten-team");
@@ -437,11 +448,12 @@ test("owner sorting, era profiles, conditional colors and matching-cache fallbac
   doc.querySelector("#ownersContent .refresh-button").click();
   assert.equal(doc.querySelectorAll("#ownersContent tbody tr").length, 10);
   assert.ok([...doc.querySelectorAll("#ownersContent tbody tr")].every((row) => !row.textContent.includes("Kyle")));
+  assert.equal(doc.querySelector("#ownersContent .owner-trend-grave"), null);
   const neutral = structuredClone(ten);
   neutral.owners.forEach((owner) => { owner.pointsFor = 100; owner.winPct = 0.5; owner.averageDeltaMedian = 0; });
   ui.renderOwners(neutral);
   const first = doc.querySelector("#ownersContent tbody tr");
-  for (const index of [3, 4, 9]) assert.equal(first.children[index].style.getPropertyValue("--score-shade"), "0.00%");
+  for (const index of [3, 6, 11]) assert.equal(first.children[index].style.getPropertyValue("--score-shade"), "0.00%");
 });
 
 test("era switching ignores late responses and never presents all-era totals as ten-team", async (t) => {

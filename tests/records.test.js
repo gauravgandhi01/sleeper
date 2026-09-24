@@ -26,6 +26,8 @@ test("records filter actual team counts, provisional/postseason scores and prese
   assert.equal(value.records.highestLosingScore[0].value, 120);
   assert.equal(value.records.lowestWinningScore[0].value, 101);
   assert.equal(value.records.closestMatchup[0].value, 110.1234 - 110.12);
+  assert.equal(value.records.closestMatchup[0].home.ownerName, "Gaurav Gandhi");
+  assert.equal(value.records.closestMatchup[0].away.ownerName, "Jake Herman");
   assert.equal(value.records.closestMatchup.length, 3);
   assert.equal(value.records.mostSeasonPoints[0].value, 211.12);
   assert.equal(value.records.mostSeasonPoints.find((row) => row.season === "2026").ongoing, true);

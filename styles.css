@@ -499,6 +499,14 @@ h2 { max-width: 640px; font-size: clamp(1.45rem, 3vw, 2.35rem); }
 .chart-median { fill: none; stroke: var(--muted); stroke-width: 2; stroke-dasharray: 7 7; opacity: .7; }
 .chart-dot { stroke: var(--panel); stroke-width: 2.5; }
 .chart-legend-note { margin: 10px 0 0; color: var(--muted); font-size: .82rem; }
+.owner-trend-section { margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--line); }
+.owner-trend-section h3 { margin: 0 0 10px; font-size: 1rem; }
+.owner-trend-avatar {
+  clip-path: circle(50%);
+  outline: 2px solid var(--panel);
+  paint-order: stroke;
+}
+.owner-trend-grave { font-size: 19px; dominant-baseline: middle; }
 
 .segmented-control { display: inline-flex; padding: 4px; border: 1px solid var(--line); border-radius: 999px; background: var(--subtle); }
 .segment-button { min-height: 34px; padding: 0 12px; border: 0; border-radius: 999px; background: transparent; color: var(--muted); cursor: pointer; font-size: .78rem; font-weight: 850; }
@@ -507,22 +515,23 @@ h2 { max-width: 640px; font-size: clamp(1.45rem, 3vw, 2.35rem); }
 .matrix-table th, .matrix-table td { min-width: 73px; text-align: center; }
 .matrix-table th:first-child, .matrix-table td:first-child { min-width: 220px; }
 .matrix-table th, .matrix-table td { padding: 11px 10px; }
+.matrix-table .team-copy strong { font-weight: 500; }
 .matrix-table thead th { position: sticky; z-index: 1; top: 0; background: color-mix(in srgb, var(--panel) 96%, var(--bg)); }
 .matrix-table thead th:first-child { z-index: 3; }
 .matrix-table tbody td:last-child,
 .matrix-table thead th:last-child,
-.matrix-table tfoot td:last-child { border-left: 1px solid var(--line); font-weight: 850; }
+.matrix-table tfoot td:last-child { border-left: 1px solid var(--line); font-weight: 500; }
 .matrix-future { color: color-mix(in srgb, var(--muted) 48%, transparent); background-color: rgba(100, 112, 106, .025); }
 .matrix-live-head { color: var(--accent-soft) !important; }
 .matrix-live-label { display: block; margin-top: 2px; color: var(--accent-soft); font-size: .56rem; letter-spacing: .08em; }
 .matrix-live-cell { box-shadow: inset 2px 0 0 var(--line), inset -2px 0 0 var(--line); }
 .matrix-table tbody td.matrix-scored { position: relative; background-color: color-mix(in srgb, var(--score-color) var(--score-shade), var(--panel)); }
-.matrix-above-median { font-weight: 850; }
-.matrix-median-marker { position: absolute; right: 2px; top: 1px; font-size: .75rem; font-weight: 900; line-height: 1; color: var(--ink); }
+.matrix-above-median { font-weight: 400; }
+.matrix-median-marker { position: absolute; right: 2px; top: 1px; font-size: .75rem; font-weight: 400; line-height: 1; color: var(--ink); }
 .matrix-result-marker { position: absolute; left: 3px; top: 5px; font-size: .48rem; line-height: 1; opacity: .82; }
 .matrix-result-loss { filter: grayscale(.25); opacity: .72; }
 .matrix-ranked { position: relative; }
-.matrix-rank { position: absolute; left: 3px; bottom: 4px; color: var(--ink); font-size: .55rem; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; }
+.matrix-rank { position: absolute; left: 3px; bottom: 4px; color: var(--ink); font-size: .55rem; font-weight: 400; line-height: 1; font-variant-numeric: tabular-nums; }
 .trend-owner-legend { display: flex; flex-wrap: wrap; gap: 8px 16px; max-width: 720px; }
 .trend-owner-key { display: inline-flex; align-items: center; gap: 5px; font-size: .76rem; }
 .career-performance { display: grid; grid-template-columns: repeat(auto-fit, minmax(145px, 1fr)); gap: 12px; margin-block: 16px; }
@@ -816,6 +825,8 @@ h2 { max-width: 640px; font-size: clamp(1.45rem, 3vw, 2.35rem); }
 .record-row { display: grid; grid-template-columns: 24px minmax(0, 1fr) auto; align-items: start; gap: 8px; padding: 12px 0; border-top: 1px solid var(--line); }
 .record-row small { display: block; color: var(--muted); overflow-wrap: anywhere; margin-top: 4px; }
 .record-rank { color: var(--muted); font-size: .8rem; }
+.record-matchup { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-weight: 700; }
+.record-vs { color: var(--muted); font-size: .78rem; font-weight: 800; text-transform: uppercase; }
 .record-value { font-variant-numeric: tabular-nums; }
 .rivalry-controls {
   display: grid;

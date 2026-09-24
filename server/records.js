@@ -12,6 +12,13 @@ export function eligibleSeasons(archive, currentSnapshot, era = "ten-team") {
 
 const identity = (team, score) => ({ rosterId: team.rosterId, ownerIds: team.canonicalOwnerIds || [], teamName: team.teamName, ownerName: team.managerName, score });
 const chronological = (a, b) => Number(a.season) - Number(b.season) || a.week - b.week || a.id.localeCompare(b.id);
+const ownerName = (ownerId, fallback) => owners.find((owner) => owner.id === ownerId)?.name || fallback;
+const recordSide = (side) => ({
+  ownerId: side.ownerIds[0],
+  ownerName: side.ownerIds.map((id) => ownerName(id, side.ownerName)).join(" / ") || side.ownerName,
+  teamName: side.teamName,
+  score: side.score,
+});
 
 /** Each actual game appears once, with season-local roster IDs and stable owner IDs. */
 export function ownerMatchups(seasons, { playoffs = false } = {}) {
@@ -53,9 +60,9 @@ export function leagueRecords(archive, currentSnapshot, options = {}) {
   const games = ownerMatchups(seasons);
   const scores = games.flatMap((game) => ["home", "away"].flatMap((side) => {
     const team = game[side], opponent = game[side === "home" ? "away" : "home"];
-    return team.ownerIds.map((ownerId) => ({ ownerId, ownerName: owners.find((owner) => owner.id === ownerId)?.name || team.ownerName, teamName: team.teamName, season: game.season, week: game.week, score: team.score, value: team.score, opponent: opponent.teamName, opponentOwner: opponent.ownerName, opponentScore: opponent.score, margin: game.margin, result: game.winner === "TIE" ? "tie" : game.winner === side.toUpperCase() ? "win" : "loss" }));
+    return team.ownerIds.map((ownerId) => ({ ownerId, ownerName: ownerName(ownerId, team.ownerName), teamName: team.teamName, season: game.season, week: game.week, score: team.score, value: team.score, opponent: opponent.teamName, opponentOwner: opponent.ownerName, opponentScore: opponent.score, margin: game.margin, result: game.winner === "TIE" ? "tie" : game.winner === side.toUpperCase() ? "win" : "loss" }));
   }));
-  const seasonRows = seasons.flatMap(({ snapshot }) => seasonRecords(snapshot).filter((row) => row.games).flatMap((row) => row.canonicalOwnerIds.map((ownerId) => ({ ownerId, ownerName: owners.find((owner) => owner.id === ownerId)?.name || snapshot.teams.find((team) => team.rosterId === row.rosterId).managerName, teamName: row.teamName, season: snapshot.metadata.season, games: row.games, ongoing: snapshot.metadata.source !== "espn" && row.games < snapshot.metadata.regularSeasonEnd - snapshot.metadata.startWeek + 1, ...row }))));
+  const seasonRows = seasons.flatMap(({ snapshot }) => seasonRecords(snapshot).filter((row) => row.games).flatMap((row) => row.canonicalOwnerIds.map((ownerId) => ({ ownerId, ownerName: ownerName(ownerId, snapshot.teams.find((team) => team.rosterId === row.rosterId).managerName), teamName: row.teamName, season: snapshot.metadata.season, games: row.games, ongoing: snapshot.metadata.source !== "espn" && row.games < snapshot.metadata.regularSeasonEnd - snapshot.metadata.startWeek + 1, ...row }))));
   const streaks = [];
   const active = new Map();
   for (const row of scores) {
@@ -69,11 +76,14 @@ export function leagueRecords(archive, currentSnapshot, options = {}) {
   }
   const weekly = (rows, key = "score", direction = "desc") => top(rows.map((row) => ({ ...row, value: row[key] })), direction);
   const seasonal = (key) => top(seasonRows.map((row) => { const { scoreValues, ...rest } = row; return { ...rest, value: row[key] }; }));
-  // A tied matchup has no winning side; show it once with its first owner.
-  const closest = games.map((game) => scores.find((row) => row.season === game.season && row.week === game.week && row.ownerId === game.home.ownerIds[0]));
+  const closest = games.map((game) => {
+    const home = recordSide(game.home);
+    const away = recordSide(game.away);
+    return { ownerId: home.ownerId, ownerName: home.ownerName, teamName: home.teamName, season: game.season, week: game.week, score: home.score, value: game.margin, opponent: away.teamName, opponentOwner: away.ownerName, opponentScore: away.score, margin: game.margin, home, away };
+  }).filter((row) => row.ownerId && row.away.ownerId);
   return { ...context(seasons, currentSnapshot, options), records: {
     highestScore: weekly(scores), lowestScore: weekly(scores, "score", "asc"), highestLosingScore: weekly(scores.filter((row) => row.result === "loss")), lowestWinningScore: weekly(scores.filter((row) => row.result === "win"), "score", "asc"),
-    biggestBlowout: weekly(scores.filter((row) => row.result === "win"), "margin"), closestMatchup: weekly(closest.filter(Boolean), "margin", "asc"), mostSeasonPoints: seasonal("pointsFor"), bestWinPercentage: seasonal("winPct"), bestMedianWinPercentage: seasonal("medianWinPct"), bestCumulativeVsMedian: seasonal("cumulativeDeltaMedian"), longestWinStreak: top(streaks),
+    biggestBlowout: weekly(scores.filter((row) => row.result === "win"), "margin"), closestMatchup: top(closest, "asc"), mostSeasonPoints: seasonal("pointsFor"), bestWinPercentage: seasonal("winPct"), bestMedianWinPercentage: seasonal("medianWinPct"), bestCumulativeVsMedian: seasonal("cumulativeDeltaMedian"), longestWinStreak: top(streaks),
   } };
 }
 

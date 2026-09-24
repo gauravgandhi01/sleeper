@@ -554,6 +554,8 @@ function statbookColumns() {
     { group: "Scoring", label: "Score SD", key: "scoreDeviation", format: point, color: "inverse", help: "Sample standard deviation of weekly scores. Lower means more consistent scoring; unavailable with fewer than two weeks." },
     { group: "Records", label: "W/L", key: "winPct", format: (_, team) => team.record, help: "Regular-season matchup record through finalized weeks." },
     { group: "Records", label: "Median", key: "medianWinPct", format: (_, team) => team.medianRecord, help: "Weekly median record: a win above the league median, a loss below it, and a tie at the median." },
+    { group: "Records", label: "Lucky W", key: "luckyWins", format: integer, help: "Wins while scoring below that week's league median." },
+    { group: "Records", label: "Unlucky L", key: "unluckyLosses", format: integer, help: "Losses while scoring above that week's league median." },
     { group: "Median", label: "Win %", key: "medianWinPct", format: percentage, color: "percent", help: "Median wins plus half of median ties, divided by finalized weeks." },
     { group: "Median", label: "Avg ±", key: "averageDeltaMedian", format: signed, color: "zero", help: "Average weekly score minus that week's league median." },
     { group: "Median", label: "Good/Avg/Bad", key: "greatWeeks", format: (_, team) => `${integer(team.greatWeeks)} / ${integer(team.averageWeeks)} / ${integer(team.badWeeks)}`, help: "Weeks above, within, and below one weekly sample standard deviation from the league median." },
@@ -1001,11 +1003,100 @@ function careerTable(columns, rows, sort, captionText) {
   return wrap;
 }
 
+function renderOwnerMedianTrend(root, owners, qualifyingSeasons) {
+  const years = [...(qualifyingSeasons || [])].map((row) => String(row.season)).sort((a, b) => Number(a) - Number(b));
+  const rows = owners.filter((owner) => owner.seasons?.length);
+  if (!years.length || !rows.length) return;
+  const yearIndex = new Map(years.map((year, index) => [year, index]));
+  const series = rows.map((owner) => {
+    let total = 0;
+    const seasons = [...owner.seasons].sort((a, b) => Number(a.season) - Number(b.season));
+    const points = seasons.map((season) => {
+      if (!yearIndex.has(String(season.season)) || !Number.isFinite(season.cumulativeDeltaMedian)) return null;
+      total += season.cumulativeDeltaMedian;
+      return { season: String(season.season), index: yearIndex.get(String(season.season)), score: total };
+    }).filter(Boolean);
+    return { owner, points };
+  }).filter((item) => item.points.length);
+  if (!series.length) return;
+  const values = series.flatMap(({ points }) => points.map((point) => point.score));
+  let yMin = Math.floor((Math.min(0, ...values) - 25) / 50) * 50;
+  let yMax = Math.ceil((Math.max(0, ...values) + 25) / 50) * 50;
+  if (yMin === yMax) { yMin -= 10; yMax += 10; }
+
+  const width = 980;
+  const height = 380;
+  const margin = { top: 26, right: 54, bottom: 46, left: 62 };
+  const plotWidth = width - margin.left - margin.right;
+  const plotHeight = height - margin.top - margin.bottom;
+  const x = (index) => margin.left + (years.length === 1 ? plotWidth / 2 : (index / (years.length - 1)) * plotWidth);
+  const y = (value) => margin.top + ((yMax - value) / (yMax - yMin)) * plotHeight;
+
+  const section = el("section", "owner-trend-section");
+  section.append(el("h3", "", "Cumulative vs median"));
+  const wrap = el("div", "chart-wrap owner-trend-chart");
+  const svg = svgEl("svg", { class: "trend-svg", viewBox: `0 0 ${width} ${height}`, role: "img", "aria-labelledby": "ownerTrendTitle ownerTrendDesc" });
+  svg.append(svgEl("title", { id: "ownerTrendTitle" }), svgEl("desc", { id: "ownerTrendDesc" }));
+  svg.querySelector("title").textContent = "Owner cumulative score versus median";
+  svg.querySelector("desc").textContent = "Each line sums an owner's season score versus weekly medians across the selected owner-career era.";
+
+  for (let step = 0; step <= 4; step += 1) {
+    const value = yMin + ((yMax - yMin) * step / 4);
+    const yPosition = y(value);
+    svg.append(svgEl("line", { class: "chart-grid", x1: margin.left, x2: width - margin.right, y1: yPosition, y2: yPosition }));
+    const label = svgEl("text", { class: "chart-axis-label", x: margin.left - 10, y: yPosition + 4, "text-anchor": "end" });
+    label.textContent = Math.round(value);
+    svg.append(label);
+  }
+  years.forEach((year, index) => {
+    const label = svgEl("text", { class: "chart-axis-label", x: x(index), y: height - 15, "text-anchor": "middle" });
+    label.textContent = `'${year.slice(-2)}`;
+    svg.append(label);
+  });
+  svg.append(svgEl("line", { class: "chart-median", x1: margin.left, x2: width - margin.right, y1: y(0), y2: y(0), "aria-label": "Zero cumulative difference from weekly medians" }));
+
+  series.forEach(({ owner, points }) => {
+    const style = ownerLineStyle({ canonicalOwnerIds: [owner.id], rosterId: owner.id });
+    const path = points.map((point, index) => `${index ? "L" : "M"}${x(point.index)},${y(point.score)}`).join(" ");
+    svg.append(svgEl("path", { class: "chart-line", d: path, stroke: style.color, "stroke-dasharray": style.dash, "data-owner": owner.id }));
+    points.forEach((point) => {
+      const description = `${owner.name}, through ${point.season}: ${signed(point.score)} cumulative vs median`;
+      const dot = svgEl("circle", { class: "chart-dot", cx: x(point.index), cy: y(point.score), r: 4, fill: style.color, tabindex: 0, "aria-label": description });
+      const title = svgEl("title");
+      title.textContent = description;
+      dot.append(title);
+      svg.append(dot);
+    });
+    const last = points.at(-1);
+    const cx = x(last.index);
+    const cy = y(last.score);
+    const src = ownerIconSrc(owner.id);
+    if (src) {
+      const image = svgEl("image", { class: "owner-trend-avatar", href: src, x: cx - 12, y: cy - 12, width: 24, height: 24, tabindex: 0, "aria-label": `${owner.name}: ${signed(last.score)} cumulative vs median` });
+      image.append(svgEl("title"));
+      image.querySelector("title").textContent = `${owner.name}: ${signed(last.score)} cumulative vs median`;
+      svg.append(image);
+    } else {
+      const grave = svgEl("text", { class: "owner-trend-grave", x: cx, y: cy + 6, "text-anchor": "middle", tabindex: 0, "aria-label": `${owner.name}: ${signed(last.score)} cumulative vs median` });
+      grave.textContent = "🪦";
+      const title = svgEl("title");
+      title.textContent = `${owner.name}: ${signed(last.score)} cumulative vs median`;
+      grave.append(title);
+      svg.append(grave);
+    }
+  });
+  wrap.append(svg);
+  section.append(wrap);
+  root.append(section);
+}
+
 function careerColumns(qualifyingSeasons = []) {
   return [
     { label: "Playoffs", key: "postseasonAppearances", render: (row) => playoffTimeline(row, qualifyingSeasons), help: "Chronological playoff results for seasons in the selected era: check means playoff appearance, X means missed playoffs, dash means not played or not yet available." },
     { label: "Record", key: "winPct", render: recordText, help: "Regular-season head-to-head record; sorted by win percentage." },
     { label: "Win %", key: "winPct", format: percentage, color: "percent", help: "Wins plus half of ties divided by decided games; neutral at 50%." },
+    { label: "Lucky W", key: "luckyWins", format: integer, help: "Wins while scoring below that week's league median." },
+    { label: "Unlucky L", key: "unluckyLosses", format: integer, help: "Losses while scoring above that week's league median." },
     { label: "PF", key: "pointsFor", format: point, color: "range", help: "Total points across qualifying finalized weeks; colors compare displayed rows." },
     { label: "PF/G", key: "pointsPerGame", format: point, color: "range", help: "Total points divided by scored weeks, not an average of season averages." },
     { label: "PA/G", key: "pointsAgainstPerGame", format: point, color: "inverse", help: "Opponent points per finalized regular-season game; lower is better." },
@@ -1102,7 +1193,10 @@ export function renderOwners(payload) {
       return button;
     } };
     if (!filtered.length) root.append(emptyState("No owners in this selection", "Change the era or current-owner filter."));
-    else root.append(careerTable([nameColumn, ...careerStats], filtered, ownerSort, "Owner career summaries"));
+    else {
+      root.append(careerTable([nameColumn, ...careerStats], filtered, ownerSort, "Owner career summaries"));
+      renderOwnerMedianTrend(root, filtered, payload.qualifyingSeasons || []);
+    }
   }
 }
 
@@ -1143,6 +1237,13 @@ function scoreboardLink(season, ownerId, text) {
   return link;
 }
 
+function renderClosestMatchupDetails(details, row) {
+  const matchup = el("div", "record-matchup");
+  matchup.append(scoreboardLink(row.season, row.home.ownerId, row.home.ownerName), el("span", "record-vs", "vs"), scoreboardLink(row.season, row.away.ownerId, row.away.ownerName));
+  const teams = el("small", "", `${row.home.teamName} (${point(row.home.score)}) · ${row.away.teamName} (${point(row.away.score)})`);
+  details.append(matchup, teams);
+}
+
 export function prepareRecords(era) {
   recordsEra = era;
   byId("recordsEra").value = era;
@@ -1171,10 +1272,11 @@ export function renderRecords(payload, error = null) {
     for (const row of payload.records[key] || []) {
       const item = el("li", "record-row");
       const details = el("div");
-      details.append(scoreboardLink(row.season, row.ownerId, row.ownerName), el("small", "", row.teamName));
+      if (key === "closestMatchup" && row.home && row.away) renderClosestMatchupDetails(details, row);
+      else details.append(scoreboardLink(row.season, row.ownerId, row.ownerName), el("small", "", row.teamName));
       details.append(el("small", "", `${row.season}${row.week ? ` · Week ${row.week}` : ` · ${row.games} games`}${row.ongoing ? " · Ongoing" : ""}`));
       if (key === "longestWinStreak") details.append(el("small", "", `From ${row.startSeason} Week ${row.startWeek}`));
-      else if (row.opponent) details.append(el("small", "", `vs ${row.opponentOwner} · ${row.opponent} (${point(row.score)}–${point(row.opponentScore)})`));
+      else if (row.opponent && key !== "closestMatchup") details.append(el("small", "", `vs ${row.opponentOwner} · ${row.opponent} (${point(row.score)}–${point(row.opponentScore)})`));
       item.append(el("span", "record-rank", `#${row.rank}`), details, el("strong", "record-value", format(row.value)));
       list.append(item);
     }

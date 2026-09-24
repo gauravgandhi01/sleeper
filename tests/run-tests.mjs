@@ -173,6 +173,15 @@ await test("weekly entries expose matchup win/loss outcomes", () => {
   assert.equal(loser.outcome, "loss");
 });
 
+await test("lucky wins and unlucky losses compare matchup results to weekly median", () => {
+  const stats = calculateStats(snapshotFromScores(["Lucky", "Low loss", "Unlucky", "High win"], [[90], [80], [200], [210]]));
+  assert.equal(stats.weeks[0].leagueMedian, 145);
+  assert.equal(stats.teams.find((row) => row.teamName === "Lucky").luckyWins, 1);
+  assert.equal(stats.teams.find((row) => row.teamName === "Low loss").unluckyLosses, 0);
+  assert.equal(stats.teams.find((row) => row.teamName === "Unlucky").unluckyLosses, 1);
+  assert.equal(stats.teams.find((row) => row.teamName === "High win").luckyWins, 0);
+});
+
 function response(body, status = 200) {
   return { ok: status >= 200 && status < 300, status, json: async () => body };
 }

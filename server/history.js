@@ -4,7 +4,7 @@ import { validateSnapshot } from "./store.js";
 import { owners } from "./identities.js";
 
 export function seasonRecords(snapshot) {
-  const rows = new Map(snapshot.teams.map((team) => [team.rosterId, { rosterId: team.rosterId, teamName: team.teamName, canonicalOwnerIds: team.canonicalOwnerIds || [], games: 0, wins: 0, losses: 0, ties: 0, pointsFor: 0, pointsAgainst: 0, medianWins: 0, medianLosses: 0, medianTies: 0, cumulativeDeltaMedian: 0, scoreValues: [] }]));
+  const rows = new Map(snapshot.teams.map((team) => [team.rosterId, { rosterId: team.rosterId, teamName: team.teamName, canonicalOwnerIds: team.canonicalOwnerIds || [], games: 0, wins: 0, losses: 0, ties: 0, luckyWins: 0, unluckyLosses: 0, pointsFor: 0, pointsAgainst: 0, medianWins: 0, medianLosses: 0, medianTies: 0, cumulativeDeltaMedian: 0, scoreValues: [] }]));
   for (const week of snapshot.completedWeeks) {
     const leagueMedian = median(week.entries.map((entry) => entry.score));
     const pairs = new Map();
@@ -26,6 +26,9 @@ export function seasonRecords(snapshot) {
         row.pointsAgainst += opponent.score;
         const result = entry.result || (entry.score === opponent.score ? "ties" : entry.score > opponent.score ? "wins" : "losses");
         row[result]++;
+        const delta = entry.score - leagueMedian;
+        if (result === "wins" && delta < 0) row.luckyWins++;
+        if (result === "losses" && delta > 0) row.unluckyLosses++;
       });
     }
   }
@@ -125,11 +128,11 @@ export class History {
     }
     return { schemaVersion: 1, era, qualifyingSeasons: eligible.map(({ snapshot }) => ({ season: snapshot.metadata.season, teamCount: snapshot.metadata.teamCount })).sort((a, b) => Number(b.season) - Number(a.season)), currentSeason: String(currentSeason), currentDataAvailable: Boolean(currentSnapshot), stale,
       owners: [...known.values()].map((owner) => {
-        const total = { seasonsPlayed: 0, games: 0, wins: 0, losses: 0, ties: 0, pointsFor: 0, pointsAgainst: 0, championships: 0, postseasonAppearances: 0, medianWins: 0, medianLosses: 0, medianTies: 0, cumulativeDeltaMedian: 0, scoreValues: [] };
+        const total = { seasonsPlayed: 0, games: 0, wins: 0, losses: 0, ties: 0, luckyWins: 0, unluckyLosses: 0, pointsFor: 0, pointsAgainst: 0, championships: 0, postseasonAppearances: 0, medianWins: 0, medianLosses: 0, medianTies: 0, cumulativeDeltaMedian: 0, scoreValues: [] };
         const years = new Set();
         for (const row of owner.seasons) {
           if (row.games) years.add(row.season);
-          for (const key of ["games", "wins", "losses", "ties", "pointsFor", "pointsAgainst", "medianWins", "medianLosses", "medianTies", "cumulativeDeltaMedian"]) total[key] += row[key];
+          for (const key of ["games", "wins", "losses", "ties", "luckyWins", "unluckyLosses", "pointsFor", "pointsAgainst", "medianWins", "medianLosses", "medianTies", "cumulativeDeltaMedian"]) total[key] += row[key];
           total.scoreValues.push(...row.scoreValues);
           if (row.champion) total.championships++;
           if (row.postseasonAppearance) total.postseasonAppearances++;

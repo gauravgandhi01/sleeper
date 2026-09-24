@@ -187,6 +187,8 @@ export function calculateStats(snapshot) {
     const medianWins = deltas.filter((value) => value > 0).length;
     const medianLosses = deltas.filter((value) => value < 0).length;
     const medianTies = deltas.filter((value) => value === 0).length;
+    const luckyWins = weekly.filter((entry) => entry.outcome === "win" && entry.deltaMedian < 0).length;
+    const unluckyLosses = weekly.filter((entry) => entry.outcome === "loss" && entry.deltaMedian > 0).length;
     const bestScore = nullableMax(scores);
     const worstScore = nullableMin(scores);
     const games = weekly.length;
@@ -201,6 +203,8 @@ export function calculateStats(snapshot) {
       ties: record.ties,
       record: decisions ? `${record.wins}-${record.losses}${record.ties ? `-${record.ties}` : ""}` : "—",
       winPct: decisions ? (record.wins + (0.5 * record.ties)) / decisions : null,
+      luckyWins,
+      unluckyLosses,
       weekly,
       total: games ? sum(scores) : null,
       average: mean(scores),
