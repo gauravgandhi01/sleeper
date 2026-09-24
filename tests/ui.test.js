@@ -56,7 +56,7 @@ test("record and rivalry panels render archive results, empty selectors, sorting
   assert.equal(firstWinner.title, expectedWinner);
   assert.equal(firstWinner.querySelector("img").alt, expectedWinner);
   firstWinner.querySelector("img").dispatchEvent(new window.Event("error"));
-  assert.equal(firstWinner.textContent, expectedWinner);
+  assert.equal(firstWinner.textContent, expectedWinner.split(/\s+/)[0]);
   assert.equal(doc.querySelectorAll("#headToHeadContent .benchmark").length, 0);
   assert.deepEqual([...doc.querySelectorAll(".rivalry-comparison thead th")].map((cell) => cell.querySelector(".rivalry-header-avatar")?.getAttribute("aria-label") || cell.textContent), ["Metric", "Gaurav Gandhi", "Alex Henoch"]);
   assert.deepEqual([...doc.querySelectorAll(".rivalry-comparison .owner-icon")].map((img) => img.getAttribute("src")), ["./img/avatars/gaurav.png", "./img/avatars/alex.png"]);
@@ -227,6 +227,7 @@ test("season UI: archive recap, owner profiles, links, visible-tab keyboard navi
   assert.equal(doc.querySelectorAll("#trendControls .owner-icon").length, 10);
   assert.ok([...doc.querySelectorAll("#trendControls .owner-icon")].every((img) => img.alt));
   assert.equal(doc.querySelectorAll("#trendChart .chart-line").length, 10);
+  assert.ok(doc.querySelector("#trendChart .owner-trend-avatar"));
   const originalLine = doc.querySelector('#trendChart [data-owner="gaurav"]');
   const originalStyle = [originalLine.getAttribute("stroke"), originalLine.getAttribute("stroke-dasharray")];
   const trendGaurav = [...doc.querySelectorAll("#trendControls label")].find((label) => label.title === "Gaurav Gandhi");
@@ -352,8 +353,8 @@ test("trend sums weekly score-minus-median with full precision and excludes prov
   payload.stats.liveWeek = { ...structuredClone(payload.stats.weeks[1]), week: 3, status: "live" };
   ui.renderDashboard(payload.stats, payload);
   const titles = [...doc.querySelectorAll("#trendChart .chart-dot title")].map((node) => node.textContent);
-  assert.ok(titles.includes(`${team.managerName}, through Week 1: +2.34 cumulative vs median`));
-  assert.ok(titles.includes(`${team.managerName}, through Week 2: -4.21 cumulative vs median`));
+  assert.ok(titles.includes(`${team.managerName.split(/\s+/)[0]}, through Week 1: +2.34 cumulative vs median`));
+  assert.ok(titles.includes(`${team.managerName.split(/\s+/)[0]}, through Week 2: -4.21 cumulative vs median`));
   assert.ok(titles.every((title) => !title.includes("Week 3")));
   assert.ok(doc.querySelector("#trendChart .chart-median"));
   payload.stats.weeks = payload.stats.weeks.slice(0, 1);

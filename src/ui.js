@@ -81,6 +81,11 @@ function signed(value, digits = 2) {
   return `${value > 0 ? "+" : ""}${Number(value).toFixed(digits)}`;
 }
 
+function shortOwnerName(name) {
+  if (!name) return "Owner";
+  return String(name).split(/\s*\/\s*/).map((part) => part.trim().split(/\s+/)[0] || part.trim()).filter(Boolean).join(" / ");
+}
+
 function makeOwnerIcon(owner) {
   const src = ownerIconSrc(owner?.id);
   if (!src) return null;
@@ -105,11 +110,11 @@ function ownerIconSrc(ownerId) {
 function compactOwner(owner) {
   const label = el("span", "owner-icon-label");
   const portrait = makeOwnerIcon(owner);
-  if (!portrait) { label.textContent = owner.name; return label; }
+  if (!portrait) { label.textContent = shortOwnerName(owner.name); label.title = owner.name; return label; }
   label.title = owner.name;
   label.tabIndex = 0;
   portrait.alt = owner.name;
-  portrait.addEventListener("error", () => { label.textContent = owner.name; }, { once: true });
+  portrait.addEventListener("error", () => { label.textContent = shortOwnerName(owner.name); }, { once: true });
   label.append(portrait);
   return label;
 }
@@ -181,7 +186,7 @@ function makeTeamLabel(team) {
   const copy = el("span", "team-copy");
   copy.title = `${team.teamName} · ${team.managerName}`;
   const name = el("strong", "", team.teamName);
-  const manager = el("span", "", team.managerName);
+  const manager = el("span", "", shortOwnerName(team.managerName));
   if (team.record && team.record !== "—") manager.append(" ", el("span", "team-record-inline", `(${team.record})`));
   copy.append(name, manager);
   label.append(makeAvatar(team), copy);
@@ -367,15 +372,36 @@ function renderTrendChart(stats) {
   series.forEach(({ team, points }) => {
     const { color, dash } = ownerLineStyle(team);
     const path = points.map((entry, index) => `${index ? "L" : "M"}${x(entry.index)},${y(entry.score)}`).join(" ");
-    svg.append(svgEl("path", { class: "chart-line", d: path, stroke: color, "stroke-dasharray": dash, "data-owner": trendOwnerId(team) }));
+    const ownerId = trendOwnerId(team);
+    svg.append(svgEl("path", { class: "chart-line", d: path, stroke: color, "stroke-dasharray": dash, "data-owner": ownerId }));
     points.forEach((entry) => {
-      const description = `${team.managerName}, through Week ${entry.week}: ${signed(entry.score)} cumulative vs median`;
+      const description = `${shortOwnerName(team.managerName)}, through Week ${entry.week}: ${signed(entry.score)} cumulative vs median`;
       const dot = svgEl("circle", { class: "chart-dot", cx: x(entry.index), cy: y(entry.score), r: 5, fill: color, tabindex: 0, "aria-label": description });
       const title = svgEl("title");
       title.textContent = description;
       dot.append(title);
       svg.append(dot);
     });
+    const last = points.at(-1);
+    if (!last) return;
+    const cx = x(last.index);
+    const cy = y(last.score);
+    const src = ownerIconSrc(ownerId);
+    const label = `${shortOwnerName(team.managerName)}: ${signed(last.score)} cumulative vs median`;
+    if (src) {
+      const image = svgEl("image", { class: "owner-trend-avatar", href: src, x: cx - 12, y: cy - 12, width: 24, height: 24, tabindex: 0, "aria-label": label });
+      const title = svgEl("title");
+      title.textContent = label;
+      image.append(title);
+      svg.append(image);
+    } else {
+      const grave = svgEl("text", { class: "owner-trend-grave", x: cx, y: cy + 6, "text-anchor": "middle", tabindex: 0, "aria-label": label });
+      grave.textContent = "🪦";
+      const title = svgEl("title");
+      title.textContent = label;
+      grave.append(title);
+      svg.append(grave);
+    }
   });
   wrap.append(svg, el("p", "chart-legend-note", "All owners · Running sum of score minus each week’s median · Above zero means cumulatively above median · Finalized weeks only"));
   root.append(wrap);
@@ -1110,7 +1136,7 @@ function renderOwnerMedianTrend(root, owners, qualifyingSeasons) {
     const path = points.map((point, index) => `${index ? "L" : "M"}${x(point.index)},${y(point.score)}`).join(" ");
     svg.append(svgEl("path", { class: "chart-line", d: path, stroke: style.color, "stroke-dasharray": style.dash, "data-owner": owner.id }));
     points.forEach((point) => {
-      const description = `${owner.name}, through ${point.season}: ${signed(point.score)} cumulative vs median`;
+      const description = `${shortOwnerName(owner.name)}, through ${point.season}: ${signed(point.score)} cumulative vs median`;
       const dot = svgEl("circle", { class: "chart-dot", cx: x(point.index), cy: y(point.score), r: 4, fill: style.color, tabindex: 0, "aria-label": description });
       const title = svgEl("title");
       title.textContent = description;
@@ -1122,15 +1148,15 @@ function renderOwnerMedianTrend(root, owners, qualifyingSeasons) {
     const cy = y(last.score);
     const src = ownerIconSrc(owner.id);
     if (src) {
-      const image = svgEl("image", { class: "owner-trend-avatar", href: src, x: cx - 12, y: cy - 12, width: 24, height: 24, tabindex: 0, "aria-label": `${owner.name}: ${signed(last.score)} cumulative vs median` });
+      const image = svgEl("image", { class: "owner-trend-avatar", href: src, x: cx - 12, y: cy - 12, width: 24, height: 24, tabindex: 0, "aria-label": `${shortOwnerName(owner.name)}: ${signed(last.score)} cumulative vs median` });
       image.append(svgEl("title"));
-      image.querySelector("title").textContent = `${owner.name}: ${signed(last.score)} cumulative vs median`;
+      image.querySelector("title").textContent = `${shortOwnerName(owner.name)}: ${signed(last.score)} cumulative vs median`;
       svg.append(image);
     } else {
-      const grave = svgEl("text", { class: "owner-trend-grave", x: cx, y: cy + 6, "text-anchor": "middle", tabindex: 0, "aria-label": `${owner.name}: ${signed(last.score)} cumulative vs median` });
+      const grave = svgEl("text", { class: "owner-trend-grave", x: cx, y: cy + 6, "text-anchor": "middle", tabindex: 0, "aria-label": `${shortOwnerName(owner.name)}: ${signed(last.score)} cumulative vs median` });
       grave.textContent = "🪦";
       const title = svgEl("title");
-      title.textContent = `${owner.name}: ${signed(last.score)} cumulative vs median`;
+      title.textContent = `${shortOwnerName(owner.name)}: ${signed(last.score)} cumulative vs median`;
       grave.append(title);
       svg.append(grave);
     }

@@ -68,6 +68,15 @@ function ownerName(team) {
   return team.managerName || team.teamName || "Owner";
 }
 
+function shortOwnerName(name) {
+  if (!name) return "Owner";
+  return String(name).split(/\s*\/\s*/).map((part) => part.trim().split(/\s+/)[0] || part.trim()).filter(Boolean).join(" / ");
+}
+
+function ownerDisplayName(team) {
+  return shortOwnerName(ownerName(team));
+}
+
 function lockIcon(label = "Score locked") {
   const icon = node("span", "live-lock", "\ud83d\udd12");
   icon.title = label;
@@ -106,7 +115,11 @@ function teamSide(team, context, makeAvatar) {
   side.append(makeAvatar(team));
   const copy = node("div", "live-team-copy");
   const name = node("strong", "", team.teamName);
-  if (team.managerName && team.managerName !== team.teamName) name.append(" ", node("span", "live-team-owner", team.managerName));
+  if (team.managerName && team.managerName !== team.teamName) {
+    const owner = node("span", "live-team-owner", shortOwnerName(team.managerName));
+    owner.title = team.managerName;
+    name.append(" ", owner);
+  }
   const record = recordText(team.record);
   if (record) name.append(" ", node("span", "live-team-record", `(${record})`));
   copy.append(name);
@@ -161,9 +174,9 @@ function marginLabel(matchup, status, nfl) {
   if (!leader) return locked || status === "final" ? "Finished tied" : "Tied";
   if (locked) {
     const loser = matchup.teams.find((team) => team.rosterId !== leader.rosterId);
-    return `${ownerName(leader)} beat ${loser ? ownerName(loser) : "opponent"} by ${points(matchup.margin)}`;
+    return `${ownerDisplayName(leader)} beat ${loser ? ownerDisplayName(loser) : "opponent"} by ${points(matchup.margin)}`;
   }
-  return `${ownerName(leader)} ${status === "final" ? "won" : "leads"} by ${points(matchup.margin)}`;
+  return `${ownerDisplayName(leader)} ${status === "final" ? "won" : "leads"} by ${points(matchup.margin)}`;
 }
 
 function statusText(starter, nfl) {

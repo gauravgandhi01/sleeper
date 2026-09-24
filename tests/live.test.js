@@ -93,9 +93,9 @@ test("live UI preserves focus, stable sorting, routes, paired starters, and acti
   const avatar = () => doc.createElement("span");
   renderLiveScores(stats, context, avatar, () => {});
   assert.match(doc.querySelector(".live-projected-value").textContent, /18.00/);
-  assert.equal(doc.querySelector(".live-team-owner")?.textContent, "Avery Owner");
+  assert.equal(doc.querySelector(".live-team-owner")?.textContent, "Avery");
   assert.equal(doc.querySelector(".live-team-record")?.textContent, "(0-0)");
-  assert.match(doc.querySelector(".live-card-footer").textContent, /Avery Owner leads by 1.00/);
+  assert.match(doc.querySelector(".live-card-footer").textContent, /Avery leads by 1.00/);
   assert.doesNotMatch(doc.querySelector(".live-card-footer").textContent, /Alpha leads/);
   const sort = doc.getElementById("liveSort"); sort.value = "closest"; sort.dispatchEvent(new dom.window.Event("change"));
   assert.equal(doc.querySelector(".live-matchup-card").id, "matchup-2");
@@ -124,7 +124,7 @@ test("live UI preserves focus, stable sorting, routes, paired starters, and acti
   renderLiveScores(stats, context, avatar, () => {});
   assert.equal(doc.querySelector(".live-team-status .live-lock"), null);
   assert.ok([...doc.querySelectorAll(".live-score-line .live-lock")].some((icon) => icon.getAttribute("aria-label") === "Team score locked"));
-  assert.match(doc.querySelector(".live-card-footer").textContent, /Avery Owner beat Blake Owner by 1.00/);
+  assert.match(doc.querySelector(".live-card-footer").textContent, /Avery beat Blake by 1.00/);
   assert.ok(doc.querySelector(".live-matchup-card.is-complete"));
   assert.equal(doc.querySelector(".live-team.is-winner .live-score-value")?.textContent, "10.00");
   dom.window.history.replaceState(null, "", "?tab=live&matchup=1&week=2"); updateLiveRoute();
