@@ -500,6 +500,7 @@ h2 { max-width: 640px; font-size: clamp(1.45rem, 3vw, 2.35rem); }
 .trend-owner-key input { accent-color: var(--team-color); }
 
 .chart-wrap { min-width: 0; }
+.chart-wrap > .export-button { margin: 0 0 10px auto; }
 .trend-svg { width: 100%; min-height: 330px; overflow: visible; }
 .chart-grid { stroke: var(--line); stroke-width: 1; }
 .chart-axis-label { fill: var(--muted); font-size: 11px; font-weight: 700; }
@@ -510,6 +511,7 @@ h2 { max-width: 640px; font-size: clamp(1.45rem, 3vw, 2.35rem); }
 .owner-trend-section { margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--line); }
 .owner-trend-section h3 { margin: 0 0 10px; font-size: 1rem; }
 .owner-trend-header { display: flex; align-items: start; justify-content: space-between; gap: 14px; flex-wrap: wrap; margin-bottom: 10px; }
+.owner-trend-title { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .owner-trend-filter { max-width: 680px; }
 .owner-trend-avatar {
   clip-path: circle(50%);
@@ -546,6 +548,9 @@ h2 { max-width: 640px; font-size: clamp(1.45rem, 3vw, 2.35rem); }
 .trend-owner-key { display: inline-flex; align-items: center; gap: 5px; font-size: .76rem; }
 .career-performance { display: grid; grid-template-columns: repeat(auto-fit, minmax(145px, 1fr)); gap: 12px; margin-block: 16px; }
 .data-table.history-table tbody tr td.career-colored, .career-colored { background-color: color-mix(in srgb, var(--score-color) var(--score-shade), var(--panel)); }
+.table-actions { display: flex; align-items: start; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin: 0 0 10px; }
+.statbook-filter { justify-content: flex-start; max-width: 720px; }
+.export-button { min-height: 34px; padding-inline: 12px; }
 .era-switch { flex: 0 0 auto; }
 @media (min-width: 1280px) {
   main.shell { width: min(1600px, calc(100% - 40px)); }

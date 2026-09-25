@@ -21,6 +21,7 @@ let ownerEra = "all";
 const ownerSort = { key: "name", direction: "asc" };
 const ownerSeasonSort = { key: "season", direction: "desc" };
 const ownerCache = new Map();
+const statbookHiddenTeams = new Set();
 const trendHiddenOwners = new Set();
 const ownerTrendHiddenOwners = new Set();
 const OWNER_ORDER = ["jake", "dylan", "gaurav", "zach", "kyle", "alex", "harrison", "will", "ben", "ethan", "cameron", "pyo-ethan-former", "ben-stanish", "zane"];
@@ -47,6 +48,86 @@ function svgEl(tag, attributes = {}) {
   const node = document.createElementNS("http://www.w3.org/2000/svg", tag);
   Object.entries(attributes).forEach(([key, value]) => node.setAttribute(key, String(value)));
   return node;
+}
+
+function safeFilename(value) {
+  return String(value || "true-league").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "true-league";
+}
+
+function downloadUrl(url, filename) {
+  const link = el("a");
+  link.href = url;
+  link.download = filename;
+  document.body.append(link);
+  link.click();
+  link.remove();
+}
+
+function svgStringToPng(svgText, filename) {
+  const image = new Image();
+  const url = URL.createObjectURL(new Blob([svgText], { type: "image/svg+xml;charset=utf-8" }));
+  image.onload = () => {
+    const canvas = document.createElement("canvas");
+    canvas.width = image.naturalWidth || image.width;
+    canvas.height = image.naturalHeight || image.height;
+    const context = canvas.getContext("2d");
+    context.fillStyle = getComputedStyle(document.documentElement).getPropertyValue("--panel").trim() || "#ffffff";
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    context.drawImage(image, 0, 0);
+    URL.revokeObjectURL(url);
+    downloadUrl(canvas.toDataURL("image/png"), filename);
+  };
+  image.onerror = () => {
+    URL.revokeObjectURL(url);
+    downloadUrl(URL.createObjectURL(new Blob([svgText], { type: "image/svg+xml;charset=utf-8" })), filename.replace(/\.png$/i, ".svg"));
+  };
+  image.src = url;
+}
+
+function exportSvgAsPng(svg, filename) {
+  const clone = svg.cloneNode(true);
+  const box = clone.viewBox?.baseVal;
+  const width = box?.width || svg.getBoundingClientRect().width || 980;
+  const height = box?.height || svg.getBoundingClientRect().height || 380;
+  clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+  clone.setAttribute("width", String(width));
+  clone.setAttribute("height", String(height));
+  const style = svgEl("style");
+  style.textContent = ".chart-grid{stroke:#d8ded8}.chart-axis-label{fill:#66726a;font:700 11px system-ui}.chart-line{fill:none;stroke-width:3.25;stroke-linecap:round;stroke-linejoin:round}.chart-median{fill:none;stroke:#66726a;stroke-width:2;stroke-dasharray:7 7;opacity:.7}.chart-dot{stroke:#fff;stroke-width:2.5}.owner-trend-avatar{clip-path:circle(50%)}.owner-trend-grave{font:19px system-ui;dominant-baseline:middle}";
+  clone.prepend(style);
+  svgStringToPng(new XMLSerializer().serializeToString(clone), filename);
+}
+
+function exportElementAsPng(element, filename) {
+  const clone = element.cloneNode(true);
+  clone.querySelectorAll("button").forEach((button) => button.remove());
+  const width = Math.ceil(element.scrollWidth || element.getBoundingClientRect().width || 1100);
+  const height = Math.ceil(element.scrollHeight || element.getBoundingClientRect().height || 700);
+  const css = [...document.styleSheets].map((sheet) => {
+    try { return [...sheet.cssRules].map((rule) => rule.cssText).join("\n"); }
+    catch { return ""; }
+  }).join("\n");
+  const wrapper = document.createElement("div");
+  wrapper.setAttribute("xmlns", "http://www.w3.org/1999/xhtml");
+  wrapper.style.background = getComputedStyle(document.documentElement).getPropertyValue("--panel").trim() || "#ffffff";
+  wrapper.style.color = getComputedStyle(document.documentElement).getPropertyValue("--ink").trim() || "#111111";
+  wrapper.style.padding = "18px";
+  wrapper.style.width = `${width}px`;
+  const style = document.createElement("style");
+  style.textContent = css;
+  wrapper.append(style, clone);
+  const serialized = new XMLSerializer().serializeToString(wrapper);
+  const svgText = `<svg xmlns="http://www.w3.org/2000/svg" width="${width + 36}" height="${height + 36}"><foreignObject width="100%" height="100%">${serialized}</foreignObject></svg>`;
+  svgStringToPng(svgText, filename);
+}
+
+function exportButton(label, onClick) {
+  const button = el("button", "refresh-button export-button");
+  button.type = "button";
+  button.title = label;
+  button.append(el("span", "refresh-icon", "⇩"), el("span", "refresh-label", label));
+  button.addEventListener("click", onClick);
+  return button;
 }
 
 function byId(id) {
@@ -403,7 +484,11 @@ function renderTrendChart(stats) {
       svg.append(grave);
     }
   });
-  wrap.append(svg, el("p", "chart-legend-note", "All owners · Running sum of score minus each week’s median · Above zero means cumulatively above median · Finalized weeks only"));
+  wrap.append(
+    exportButton("Export chart", () => exportSvgAsPng(svg, `${safeFilename(`trends-${stats.metadata?.season || "season"}`)}.png`)),
+    svg,
+    el("p", "chart-legend-note", "Selected owners · Running sum of score minus each week’s median · Above zero means cumulatively above median · Finalized weeks only"),
+  );
   root.append(wrap);
 }
 
@@ -608,6 +693,28 @@ function statbookColumns() {
   ];
 }
 
+function renderStatbookFilter(stats) {
+  const controls = el("div", "team-filter statbook-filter");
+  stats.teams.forEach((team) => {
+    const id = trendOwnerId(team);
+    const style = ownerLineStyle(team);
+    const label = el("label", "trend-owner-key");
+    label.style.setProperty("--team-color", style.color);
+    label.title = team.managerName;
+    const input = el("input");
+    input.type = "checkbox";
+    input.checked = !statbookHiddenTeams.has(id);
+    input.addEventListener("change", () => {
+      if (input.checked) statbookHiddenTeams.delete(id);
+      else statbookHiddenTeams.add(id);
+      renderStatbookTable(stats);
+    });
+    label.append(input, compactOwner({ id: team.canonicalOwnerIds?.length === 1 ? team.canonicalOwnerIds[0] : null, name: team.managerName }));
+    controls.append(label);
+  });
+  return controls;
+}
+
 function renderStatbookTable(stats) {
   const root = byId("statbookTable");
   root.replaceChildren();
@@ -643,7 +750,7 @@ function renderStatbookTable(stats) {
   });
   thead.append(groupRow, labelRow);
   const tbody = el("tbody");
-  sortedTeams(stats.teams, uiState.statSort).forEach((team) => {
+  sortedTeams(stats.teams, uiState.statSort).filter((team) => !statbookHiddenTeams.has(trendOwnerId(team))).forEach((team) => {
     const row = el("tr");
     const identity = el("td");
     identity.append(makeTeamLabel(team));
@@ -660,7 +767,9 @@ function renderStatbookTable(stats) {
     tbody.append(row);
   });
   table.append(thead, tbody);
-  root.append(table);
+  const actions = el("div", "table-actions");
+  actions.append(renderStatbookFilter(stats), exportButton("Export Stat book", () => exportElementAsPng(table, `${safeFilename(`statbook-${stats.metadata?.season || "season"}`)}.png`)));
+  root.append(actions, table);
 }
 
 
@@ -1076,7 +1185,9 @@ function renderOwnerMedianTrend(root, owners, qualifyingSeasons) {
   const yearIndex = new Map(years.map((year, index) => [year, index]));
   const section = el("section", "owner-trend-section");
   const header = el("div", "owner-trend-header");
-  header.append(el("h3", "", "Cumulative vs median"), ownerTrendFilter(rows));
+  const title = el("div", "owner-trend-title");
+  title.append(el("h3", "", "Cumulative vs median"));
+  header.append(title, ownerTrendFilter(rows));
   section.append(header);
 
   const visibleRows = rows.filter((owner) => !ownerTrendHiddenOwners.has(owner.id));
@@ -1161,6 +1272,7 @@ function renderOwnerMedianTrend(root, owners, qualifyingSeasons) {
       svg.append(grave);
     }
   });
+  title.append(exportButton("Export chart", () => exportSvgAsPng(svg, `${safeFilename(`owner-cumulative-${ownerEra}`)}.png`)));
   wrap.append(svg);
   section.append(wrap);
   root.append(section);

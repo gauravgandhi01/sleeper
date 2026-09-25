@@ -228,6 +228,7 @@ test("season UI: archive recap, owner profiles, links, visible-tab keyboard navi
   assert.ok([...doc.querySelectorAll("#trendControls .owner-icon")].every((img) => img.alt));
   assert.equal(doc.querySelectorAll("#trendChart .chart-line").length, 10);
   assert.ok(doc.querySelector("#trendChart .owner-trend-avatar"));
+  assert.equal(doc.querySelector("#trendChart .export-button")?.title, "Export chart");
   const originalLine = doc.querySelector('#trendChart [data-owner="gaurav"]');
   const originalStyle = [originalLine.getAttribute("stroke"), originalLine.getAttribute("stroke-dasharray")];
   const trendGaurav = [...doc.querySelectorAll("#trendControls label")].find((label) => label.title === "Gaurav Gandhi");
@@ -389,6 +390,15 @@ test("live matrix cells have no heat or median marker and do not rescale finaliz
   assert.equal(doc.querySelector("#statbookTable .record-pill").parentElement.classList.contains("career-colored"), false);
   assert.ok([...doc.querySelectorAll("#statbookTable thead button")].some((button) => button.textContent === "Good/Avg/Bad"));
   assert.ok([...doc.querySelectorAll("#statbookTable thead button")].some((button) => button.textContent === "Lucky/Unlucky"));
+  assert.equal(doc.querySelector("#statbookTable .export-button")?.title, "Export Stat book");
+  assert.equal(doc.querySelectorAll("#statbookTable .statbook-filter input").length, payload.stats.teams.length);
+  const statbookFirstFilter = doc.querySelector("#statbookTable .statbook-filter input");
+  const statbookRowCount = doc.querySelectorAll("#statbookTable tbody tr").length;
+  statbookFirstFilter.checked = false;
+  statbookFirstFilter.dispatchEvent(new window.Event("change"));
+  assert.equal(doc.querySelectorAll("#statbookTable tbody tr").length, statbookRowCount - 1);
+  doc.querySelector("#statbookTable .statbook-filter input").checked = true;
+  doc.querySelector("#statbookTable .statbook-filter input").dispatchEvent(new window.Event("change"));
   assert.equal([...doc.querySelectorAll("#statbookTable thead .group-head")].some((head) => head.textContent === "Records"), true);
   assert.ok([...doc.querySelectorAll("#statbookTable tbody tr:first-child .record-pill")].some((pill) => /^\d+-\d+/.test(pill.textContent)));
   assert.ok([...doc.querySelectorAll("#statbookTable tbody tr:first-child td")].some((cell) => /^\d+ \/ \d+ \/ \d+$/.test(cell.textContent)));
@@ -428,6 +438,7 @@ test("owner sorting, era profiles, conditional colors and matching-cache fallbac
   assert.ok(doc.querySelector("#ownersContent .owner-trend-chart"));
   assert.ok(doc.querySelector("#ownersContent .owner-trend-avatar"));
   assert.ok(doc.querySelector("#ownersContent .owner-trend-grave"));
+  assert.equal(doc.querySelector("#ownersContent .owner-trend-section .export-button")?.title, "Export chart");
   assert.ok(doc.querySelectorAll("#ownersContent .owner-trend-filter input").length > 0);
   const ownerTrendGaurav = [...doc.querySelectorAll("#ownersContent .owner-trend-filter label")].find((label) => label.title === "Gaurav Gandhi");
   ownerTrendGaurav.querySelector("input").checked = false;
