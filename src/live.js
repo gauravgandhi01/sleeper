@@ -62,6 +62,15 @@ function blobToDataUrl(blob) {
   });
 }
 
+function downloadUrl(url, filename) {
+  const link = node("a");
+  link.href = url;
+  link.download = filename;
+  document.body.append(link);
+  link.click();
+  link.remove();
+}
+
 async function inlineImages(root) {
   await Promise.all([...root.querySelectorAll("img")].map(async (image) => {
     try {
@@ -95,19 +104,25 @@ async function exportElementAsPng(element, filename) {
   const serialized = new XMLSerializer().serializeToString(wrapper);
   const svgText = `<svg xmlns="http://www.w3.org/2000/svg" width="${width + 36}" height="${height + 36}"><foreignObject width="100%" height="100%">${serialized}</foreignObject></svg>`;
   const image = new Image();
-  const url = URL.createObjectURL(new Blob([svgText], { type: "image/svg+xml;charset=utf-8" }));
+  const svgBlob = new Blob([svgText], { type: "image/svg+xml;charset=utf-8" });
+  const url = URL.createObjectURL(svgBlob);
   image.onload = () => {
-    const canvas = document.createElement("canvas");
-    canvas.width = width + 36;
-    canvas.height = height + 36;
-    canvas.getContext("2d").drawImage(image, 0, 0);
-    URL.revokeObjectURL(url);
-    const link = document.createElement("a");
-    link.href = canvas.toDataURL("image/png");
-    link.download = filename;
-    link.click();
+    try {
+      const canvas = document.createElement("canvas");
+      canvas.width = width + 36;
+      canvas.height = height + 36;
+      canvas.getContext("2d").drawImage(image, 0, 0);
+      downloadUrl(canvas.toDataURL("image/png"), filename);
+    } catch {
+      downloadUrl(URL.createObjectURL(svgBlob), filename.replace(/\.png$/i, ".svg"));
+    } finally {
+      URL.revokeObjectURL(url);
+    }
   };
-  image.onerror = () => URL.revokeObjectURL(url);
+  image.onerror = () => {
+    URL.revokeObjectURL(url);
+    downloadUrl(URL.createObjectURL(svgBlob), filename.replace(/\.png$/i, ".svg"));
+  };
   image.src = url;
 }
 export function liveAutoEnabled() { return auto; }
@@ -424,8 +439,8 @@ function draw() {
   const nfl = context.nflStatus;
   lastFresh = statusFresh(nfl);
   freshness.append(node("span", "", `NFL ${time(nfl?.fetchedAt)}${!statusFresh(nfl) ? " \u00b7 Stale" : nfl?.failed ? " \u00b7 Saved" : ""}`));
-  const projections = context.espnFantasyStatus;
-  if (projections) freshness.append(node("span", "", projections.unavailable && !projections.fetchedAt ? "Proj Off" : `Proj ${projections.fetchedAt ? time(projections.fetchedAt) : "Unavailable"}${projections.stale ? " \u00b7 Stale" : projections.failed ? " \u00b7 Saved" : ""}`));
+  const projections = context.projectionStatus || context.espnFantasyStatus;
+  if (projections) freshness.append(node("span", "", projections.unavailable && !projections.fetchedAt ? "Proj Off" : `Proj ${projections.source ? `${projections.source} ` : ""}${projections.fetchedAt ? time(projections.fetchedAt) : "Unavailable"}${projections.stale ? " \u00b7 Stale" : projections.failed ? " \u00b7 Saved" : ""}`));
   const label = node("label", "live-auto", "Auto-refresh");
   const input = node("input"); input.type = "checkbox"; input.id = "liveAuto"; input.checked = auto; input.setAttribute("role", "switch");
   input.addEventListener("change", () => { auto = input.checked; window.dispatchEvent(new window.Event("live-auto-change")); });

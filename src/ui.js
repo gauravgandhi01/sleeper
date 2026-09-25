@@ -107,6 +107,55 @@ async function inlineSvgImages(svg) {
   }));
 }
 
+async function dataUrlForSrc(src) {
+  if (!src) return null;
+  try {
+    const response = await fetch(new URL(src, window.location.href));
+    if (!response.ok) return null;
+    return await blobToDataUrl(await response.blob());
+  } catch {
+    return null;
+  }
+}
+
+function cssColor(value, fallback) {
+  const probe = el("span");
+  probe.style.color = value || fallback;
+  document.body.append(probe);
+  const resolved = getComputedStyle(probe).color;
+  probe.remove();
+  const match = resolved.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+  if (!match) return fallback;
+  return `#${[match[1], match[2], match[3]].map((part) => Number(part).toString(16).padStart(2, "0")).join("")}`;
+}
+
+function mixHex(a, b, amount) {
+  const parse = (hex) => {
+    const clean = String(hex).replace("#", "");
+    return [0, 2, 4].map((index) => parseInt(clean.slice(index, index + 2), 16));
+  };
+  const left = parse(a);
+  const right = parse(b);
+  const mixed = left.map((value, index) => Math.round(value * (1 - amount) + right[index] * amount));
+  return `#${mixed.map((value) => value.toString(16).padStart(2, "0")).join("")}`;
+}
+
+function performanceBalance(value, column, rows) {
+  if (!column.color || !Number.isFinite(value)) return null;
+  const values = rows.map((row) => row[column.key]).filter(Number.isFinite);
+  let balance = 0;
+  if (column.color === "percent") balance = (value - 0.5) * 2;
+  else if (column.color === "zero") {
+    const bound = Math.max(...values.map(Math.abs), 0);
+    balance = bound ? value / bound : 0;
+  } else {
+    const min = Math.min(...values), max = Math.max(...values);
+    balance = max > min ? (value - min) / (max - min) * 2 - 1 : 0;
+    if (column.color === "inverse") balance *= -1;
+  }
+  return Math.max(-1, Math.min(1, balance));
+}
+
 function truncatedText(value, limit = 145) {
   const text = String(value || "");
   return text.length > limit ? `${text.slice(0, limit - 1)}…` : text;
@@ -172,23 +221,37 @@ function exportElementAsPng(element, filename) {
   svgStringToPng(svgText, filename);
 }
 
-function exportStatbookAsPng(stats, teams, columns) {
-  const teamWidth = 170;
+async function exportStatbookAsPng(stats, teams, columns) {
+  const teamWidth = 210;
   const colWidth = 92;
   const rowHeight = 30;
-  const headerHeight = 94;
+  const headerHeight = 104;
   const width = teamWidth + (columns.length * colWidth) + 36;
   const height = headerHeight + ((teams.length + 1) * rowHeight) + 30;
   const svg = svgEl("svg", { xmlns: "http://www.w3.org/2000/svg", width, height, viewBox: `0 0 ${width} ${height}` });
-  const bg = getComputedStyle(document.documentElement).getPropertyValue("--panel").trim() || "#ffffff";
-  const ink = getComputedStyle(document.documentElement).getPropertyValue("--ink").trim() || "#111111";
-  const muted = getComputedStyle(document.documentElement).getPropertyValue("--muted").trim() || "#66726a";
-  const line = getComputedStyle(document.documentElement).getPropertyValue("--line").trim() || "#d8ded8";
+  const styles = getComputedStyle(document.documentElement);
+  const bg = cssColor(styles.getPropertyValue("--panel").trim(), "#ffffff");
+  const ink = cssColor(styles.getPropertyValue("--ink").trim(), "#111111");
+  const muted = cssColor(styles.getPropertyValue("--muted").trim(), "#66726a");
+  const line = cssColor(styles.getPropertyValue("--line").trim(), "#d8ded8");
+  const high = cssColor(styles.getPropertyValue("--score-high").trim(), "#4b9270");
+  const low = cssColor(styles.getPropertyValue("--score-low").trim(), "#b65d65");
+  const logo = await dataUrlForSrc("./logo.png");
+  const avatarUrls = new Map();
+  await Promise.all(teams.map(async (team) => {
+    const ownerId = team.canonicalOwnerIds?.find((id) => OWNER_ICONS[id]);
+    const src = ownerIconSrc(ownerId) || team.avatarUrl;
+    const dataUrl = await dataUrlForSrc(src);
+    if (dataUrl) avatarUrls.set(team.rosterId, dataUrl);
+  }));
   svg.append(svgEl("rect", { width, height, fill: bg }));
-  const title = svgEl("text", { x: 18, y: 30, fill: ink, "font-family": "system-ui, sans-serif", "font-size": 22, "font-weight": 800 });
+  if (logo) {
+    svg.append(svgEl("image", { href: logo, x: 18, y: 14, width: 42, height: 42, preserveAspectRatio: "xMidYMid meet" }));
+  }
+  const title = svgEl("text", { x: logo ? 72 : 18, y: 32, fill: ink, "font-family": "system-ui, sans-serif", "font-size": 22, "font-weight": 800 });
   title.textContent = `Stat book · ${stats.metadata?.season || "Season"}`;
   svg.append(title);
-  const subtitle = svgEl("text", { x: 18, y: 54, fill: muted, "font-family": "system-ui, sans-serif", "font-size": 13, "font-weight": 600 });
+  const subtitle = svgEl("text", { x: logo ? 72 : 18, y: 56, fill: muted, "font-family": "system-ui, sans-serif", "font-size": 13, "font-weight": 600 });
   subtitle.textContent = truncatedText(`${teams.length} selected teams · Finalized regular-season weeks only`, 130);
   svg.append(subtitle);
   const top = headerHeight;
@@ -212,11 +275,28 @@ function exportStatbookAsPng(stats, teams, columns) {
   teams.forEach((team, rowIndex) => {
     const y = top + ((rowIndex + 1) * rowHeight);
     if (rowIndex % 2 === 0) svg.append(svgEl("rect", { x: 12, y: y - 20, width: width - 24, height: rowHeight, fill: "rgba(100,112,106,.06)" }));
-    addText(team.teamName, 18, y, { weight: 700, limit: 22 });
-    addText(shortOwnerName(team.managerName), 18, y + 13, { fill: muted, size: 10, limit: 24 });
+    const avatar = avatarUrls.get(team.rosterId);
+    if (avatar) {
+      const clipId = `avatar-${rowIndex}`;
+      const clip = svgEl("clipPath", { id: clipId });
+      clip.append(svgEl("circle", { cx: 28, cy: y - 7, r: 11 }));
+      svg.append(clip);
+      svg.append(svgEl("image", { href: avatar, x: 17, y: y - 18, width: 22, height: 22, "clip-path": `url(#${clipId})`, preserveAspectRatio: "xMidYMid slice" }));
+    } else {
+      svg.append(svgEl("circle", { cx: 28, cy: y - 7, r: 11, fill: line }));
+      addText(teamInitials(team), 28, y - 3, { anchor: "middle", weight: 800, size: 8, limit: 3 });
+    }
+    addText(team.teamName, 46, y - 1, { weight: 700, limit: 24 });
+    addText(shortOwnerName(team.managerName), 46, y + 12, { fill: muted, size: 10, limit: 28 });
     columns.forEach((column, index) => {
       const rendered = column.format.length > 1 ? column.format(team[column.key], team) : column.format(team[column.key]);
-      addText(rendered, teamWidth + 18 + (index * colWidth) + colWidth - 8, y, { anchor: "end", limit: 16 });
+      const x = teamWidth + 18 + (index * colWidth);
+      const balance = performanceBalance(team[column.key], column, stats.teams);
+      if (balance !== null) {
+        const color = balance < 0 ? low : high;
+        svg.append(svgEl("rect", { x, y: y - 20, width: colWidth, height: rowHeight, fill: mixHex(bg, color, Math.abs(balance) * 0.30) }));
+      }
+      addText(rendered, x + colWidth - 8, y, { anchor: "end", limit: 16 });
     });
   });
   svgStringToPng(new XMLSerializer().serializeToString(svg), `${safeFilename(`statbook-${stats.metadata?.season || "season"}`)}.png`);

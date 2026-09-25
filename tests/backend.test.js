@@ -201,6 +201,12 @@ test("Sleeper projections fill in when ESPN credentials are unavailable", async 
   assert.equal(matchups.matchups[0].teams[0].starters[0].projectedPoints, 12.35);
   assert.equal(matchups.matchups[0].teams[0].starters[1].projectedPoints, 7.25);
   assert.equal(matchups.matchups[0].teams[0].projectedScore, 19.6);
+
+  const espnActive = { unavailable: false, stale: false, playersByName: new Map([["receiver", { projectedPoints: 5 }]]), defensesByTeam: new Map() };
+  const noMix = currentMatchups(snapshot, { p1: { name: "Receiver", nflTeam: "BUF" }, PIT: { name: "Pittsburgh Steelers", position: "DEF", nflTeam: "PIT" } }, espnActive, null, null, projections.dashboard("2026", 2));
+  assert.equal(noMix.matchups[0].teams[0].starters[0].projectedPoints, 5);
+  assert.equal(noMix.matchups[0].teams[0].starters[1].projectedPoints, null);
+  assert.equal(noMix.matchups[0].teams[0].projectedScore, 5);
 });
 
 test("store persists, deduplicates timestamps, archives corrections, recovers corrupted latest", async (t) => {

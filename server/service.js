@@ -12,7 +12,7 @@ function projectionForStarter(starter, projections, fallbackProjections) {
     const byDefense = starter.slot === "DEF" && starter.nflTeam ? projections.defensesByTeam?.get(starter.nflTeam) : null;
     const byName = byDefense || projections.playersByName?.get(projectionKey(name));
     const value = (byDefense || byName)?.projectedPoints;
-    if (Number.isFinite(value)) return value;
+    return Number.isFinite(value) ? value : null;
   }
   if (fallbackProjections && !fallbackProjections.stale && !fallbackProjections.unavailable) {
     const ids = starter.slot === "DEF" && starter.nflTeam ? [`TEAM_${starter.nflTeam}`, starter.playerId] : [starter.playerId];
@@ -72,6 +72,15 @@ function projectionStatus(status) {
   if (!status) return null;
   const { season, week, fetchedAt, stale, unavailable, failed, reason, source } = status;
   return { season, week, fetchedAt, stale, unavailable, failed, reason, source };
+}
+
+function activeProjectionStatus(espnStatus, sleeperStatus) {
+  if (espnStatus && !espnStatus.stale && !espnStatus.unavailable) return { ...projectionStatus(espnStatus), active: true };
+  if (sleeperStatus && !sleeperStatus.stale && !sleeperStatus.unavailable) {
+    const { season, week, fetchedAt, stale, unavailable, failed, reason, source } = sleeperStatus;
+    return { season, week, fetchedAt, stale, unavailable, failed, reason, source, active: true };
+  }
+  return projectionStatus(espnStatus) || projectionStatus(sleeperStatus);
 }
 
 export function currentMatchups(snapshot, players = {}, projections = null, nflStatus = null, weeklyStats = null, fallbackProjections = null) {
@@ -167,6 +176,7 @@ export class DashboardService {
     const espnFantasyStatus = currentWeek <= regularSeasonEnd ? this.espnFantasy?.dashboard(season, currentWeek) || null : null;
     const sleeperStatsStatus = currentWeek <= regularSeasonEnd ? this.sleeperStats?.dashboard(season, currentWeek) || null : null;
     const sleeperProjectionStatus = currentWeek <= regularSeasonEnd ? this.sleeperProjections?.dashboard(season, currentWeek) || null : null;
-    return { schemaVersion: 1, stats: calculateStats(snapshot), nflStatus, espnFantasyStatus: projectionStatus(espnFantasyStatus), draftBoard: this.draftBoard?.dashboard(snapshot.metadata.draftId, snapshot.teams) || null, currentWeekMatchups: currentMatchups(snapshot, this.playerDirectory?.players, espnFantasyStatus, nflStatus, sleeperStatsStatus, sleeperProjectionStatus), lastSuccessfulFetchAt, stale, warnings };
+    const useSleeperProjectionFallback = !espnFantasyStatus || espnFantasyStatus.stale || espnFantasyStatus.unavailable;
+    return { schemaVersion: 1, stats: calculateStats(snapshot), nflStatus, espnFantasyStatus: projectionStatus(espnFantasyStatus), projectionStatus: activeProjectionStatus(espnFantasyStatus, sleeperProjectionStatus), draftBoard: this.draftBoard?.dashboard(snapshot.metadata.draftId, snapshot.teams) || null, currentWeekMatchups: currentMatchups(snapshot, this.playerDirectory?.players, espnFantasyStatus, nflStatus, sleeperStatsStatus, useSleeperProjectionFallback ? sleeperProjectionStatus : null), lastSuccessfulFetchAt, stale, warnings };
   }
 }
