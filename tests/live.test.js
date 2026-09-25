@@ -45,7 +45,7 @@ test("starter counts exclude empty slots and do not equate zero scores with comp
 });
 
 function current(a = 10, b = 9, week = 2) {
-  return { week, status: "provisional", unpairedTeams: [], matchups: [{ matchupId: 1, margin: Math.abs(a - b), leaderRosterId: a === b ? null : a > b ? 1 : 2, teams: [{ rosterId: 1, managerName: "Avery Owner", teamName: "Alpha", score: a, projectedScore: 18, starters: [{ playerId: "1", slot: "QB", name: "Starter One", nflTeam: "JAX", points: a, projectedPoints: 12 }] }, { rosterId: 2, managerName: "Blake Owner", teamName: "Beta", score: b, projectedScore: 16, starters: [{ playerId: "2", slot: "QB", name: "Starter Two", nflTeam: "WAS", points: b, projectedPoints: 10 }] }] }] };
+  return { week, status: "provisional", unpairedTeams: [], matchups: [{ matchupId: 1, margin: Math.abs(a - b), leaderRosterId: a === b ? null : a > b ? 1 : 2, teams: [{ rosterId: 1, managerName: "Avery Owner", teamName: "Alpha", score: a, projectedScore: 18, starters: [{ playerId: "1", slot: "QB", name: "Starter One", nflTeam: "JAX", points: a, projectedPoints: 12, statLine: "12/18, 145 pass yd, 1 TD" }] }, { rosterId: 2, managerName: "Blake Owner", teamName: "Beta", score: b, projectedScore: 16, starters: [{ playerId: "2", slot: "QB", name: "Starter Two", nflTeam: "WAS", points: b, projectedPoints: 10, statLine: "14 rush yd" }] }] }] };
 }
 test("activity groups score changes, handles ties/decreases, rejects late snapshots and caps the feed", () => {
   const feed = new LiveActivity();
@@ -73,7 +73,7 @@ test("auto refresh only runs when visible, online, current, due and unfinished",
   for (const status of ["final", "season_complete"]) assert.equal(shouldRefreshLive({ ...ready, status }), false);
 });
 
-test("live UI preserves focus, stable sorting, routes, paired starters, and activity", async (t) => {
+test("live UI preserves focus, stable order, routes, and paired starters", async (t) => {
   const dom = new JSDOM('<div id="liveWeekRegion"></div>', { url: "http://localhost/?tab=live" });
   for (const key of ["window", "document"]) {
     const previous = Object.getOwnPropertyDescriptor(globalThis, key);
@@ -95,28 +95,41 @@ test("live UI preserves focus, stable sorting, routes, paired starters, and acti
   assert.match(doc.querySelector(".live-projected-value").textContent, /18.00/);
   assert.equal(doc.querySelector(".live-team-owner")?.textContent, "Avery");
   assert.equal(doc.querySelector(".live-team-record")?.textContent, "(0-0)");
+  assert.equal(doc.querySelector(".live-state")?.textContent, "Live");
   assert.match(doc.querySelector(".live-card-footer").textContent, /Avery leads by 1.00/);
   assert.doesNotMatch(doc.querySelector(".live-card-footer").textContent, /Alpha leads/);
-  const sort = doc.getElementById("liveSort"); sort.value = "closest"; sort.dispatchEvent(new dom.window.Event("change"));
-  assert.equal(doc.querySelector(".live-matchup-card").id, "matchup-2");
+  assert.equal(doc.getElementById("liveSort"), null);
+  assert.equal(doc.querySelector(".live-matchup-card").id, "matchup-1");
   doc.getElementById("matchup-1").focus();
   data.matchups[0].margin = 0; data.matchups[1].margin = 20;
   renderLiveScores(stats, context, avatar, () => {});
   assert.equal(doc.activeElement.id, "matchup-1");
-  assert.equal(doc.querySelector(".live-matchup-card").id, "matchup-2");
+  assert.equal(doc.querySelector(".live-matchup-card").id, "matchup-1");
   doc.getElementById("matchup-1").click();
   assert.equal(new URL(dom.window.location.href).searchParams.get("matchup"), "1");
+  assert.equal(doc.querySelector(".live-detail-nav .export-button")?.title, "Export matchup");
+  assert.ok(doc.getElementById("liveMatchupExport"));
   assert.match(doc.querySelector(".live-player-projected").textContent, /12.00/);
+  const playerLogo = doc.querySelector(".live-starter .live-player-name .live-nfl-logo");
+  const opponentLogo = doc.querySelector(".live-starter .live-player-status .live-nfl-logo");
+  assert.match(playerLogo?.getAttribute("src"), /\/jax\.png$/);
+  assert.equal(playerLogo?.getAttribute("alt"), "JAX logo");
+  assert.match(opponentLogo?.getAttribute("src"), /\/wsh\.png$/);
+  assert.equal(opponentLogo?.getAttribute("alt"), "WAS logo");
   data.matchups[0].teams[0].starters[0].nflTeam = "NYJ";
   renderLiveScores(stats, context, avatar, () => {});
   assert.equal(doc.querySelector(".live-starter[data-game-state='final'] .live-player-projected"), null);
   assert.equal(doc.querySelector(".live-starter[data-game-state='final'] .live-lock")?.getAttribute("aria-label"), "Player score locked");
+  assert.equal(doc.querySelector(".live-starter[data-game-state='final'] .live-player-statline")?.textContent, "12/18, 145 pass yd, 1 TD");
+  assert.equal(doc.querySelector(".live-starter[data-game-state='scheduled'] .live-player-statline"), null);
   assert.equal(doc.querySelectorAll(".live-starter-row:not(.live-roster-labels)").length, 1);
-  assert.equal(doc.getElementById("livePrevious").disabled, true);
+  assert.equal(doc.querySelector(".live-matchup-picker-button.is-selected")?.id, "liveMatchupPick-1");
+  doc.getElementById("liveMatchupPick-2").click();
+  assert.equal(new URL(dom.window.location.href).searchParams.get("matchup"), "2");
+  doc.getElementById("liveMatchupPick-1").click();
   const newer = { ...context, currentWeekMatchups: current(8, 11), cachedAt: new Date(Date.now() + 60000).toISOString() };
   renderLiveScores(stats, newer, avatar, () => {});
-  assert.match(doc.querySelector(".live-activity").textContent, /Beta takes the lead/);
-  assert.match(doc.querySelector(".live-activity").textContent, /Alpha -2.00/);
+  assert.equal(doc.querySelector(".live-activity"), null);
   doc.getElementById("liveBack").click();
   assert.equal(doc.querySelectorAll(".live-matchup-card").length, 1);
   data.matchups[0].margin = 1;

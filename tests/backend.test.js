@@ -10,6 +10,8 @@ import { fetchSleeperSeason, cutoffCompletedWeek } from "../src/sleeper.js";
 import { PlayerDirectory } from "../server/players.js";
 import { DraftBoard, normalizeDraft } from "../server/draft.js";
 import { EspnFantasyProjections } from "../server/espn-fantasy.js";
+import { sleeperStatLine, SleeperWeeklyStats } from "../server/sleeper-stats.js";
+import { sleeperProjection, SleeperWeeklyProjections } from "../server/sleeper-projections.js";
 
 test("draft grid follows actual snake slots and retains compound last names", () => {
   const raw = { draft_id: "123", season: "2026", type: "snake", status: "complete", settings: { rounds: 2, teams: 2 }, slot_to_roster_id: { 1: 2, 2: 1 } };
@@ -124,11 +126,18 @@ test("ESPN fantasy projections merge into current Sleeper matchups", async () =>
     teams: [{ id: 1, owners: ["{26A72411-1823-4B1B-A724-1118237B1BD4}"] }, { id: 2, owners: ["{492B6C02-FE6E-462C-AB6C-02FE6E762CA9}+{7D0CEB2A-FD69-4B44-A332-D439AB4DECC1}"] }],
     schedule: [{
       home: { teamId: 1, totalProjectedPointsLive: 101.25, rosterForCurrentScoringPeriod: { entries: [
-        { playerPoolEntry: { player: { fullName: "Davante Adams", defaultPositionId: 4, proTeamId: 20, stats: [{ seasonId: 2026, scoringPeriodId: 2, statSourceId: 1, statSplitTypeId: 0, appliedTotal: 14.44 }] } } },
+        { playerPoolEntry: { player: { fullName: "Davante Adams", defaultPositionId: 4, proTeamId: 20, stats: [
+          { seasonId: 2026, scoringPeriodId: 2, statSourceId: 1, statSplitTypeId: 0, appliedTotal: 14.44 },
+          { seasonId: 2026, scoringPeriodId: 2, statSourceId: 0, statSplitTypeId: 1, appliedTotal: 7, stats: { 41: 4, 42: 55, 43: 1, 58: 6 } },
+        ] } } },
         { playerPoolEntry: { player: { fullName: "Other Player", defaultPositionId: 4, proTeamId: 2, stats: [{ seasonId: 2026, scoringPeriodId: 2, statSourceId: 1, statSplitTypeId: 0, appliedTotal: 10 }] } } },
+        { playerPoolEntry: { player: { fullName: "Test Kicker", defaultPositionId: 5, proTeamId: 2, stats: [{ seasonId: 2026, scoringPeriodId: 2, statSourceId: 1, statSplitTypeId: 1, appliedTotal: 99, stats: { 80: 1, 77: 1, 198: 1, 86: 2, 85: 0.5, 88: 0.25 } }] } } },
       ] } },
       away: { teamId: 2, totalProjectedPointsLive: 88.1, rosterForCurrentScoringPeriod: { entries: [] } },
     }],
+    players: [
+      { playerPoolEntry: { player: { fullName: "Away Player", defaultPositionId: 2, proTeamId: 2, stats: [{ seasonId: 2026, scoringPeriodId: 2, statSourceId: 1, statSplitTypeId: 1, appliedTotal: 9.25 }] } } },
+    ],
   };
   let calls = 0;
   const espn = new EspnFantasyProjections({ espnS2: "s2", swid: "swid", now: () => Date.parse("2026-09-20T12:00:00Z"), log, fetchImpl: async () => {
@@ -140,16 +149,58 @@ test("ESPN fantasy projections merge into current Sleeper matchups", async () =>
   assert.equal(calls, 1);
 
   const snapshot = fixture();
-  snapshot.metadata.startingSlots = ["WR", "WR"];
+  snapshot.metadata.startingSlots = ["WR", "WR", "K"];
   snapshot.teams[0].canonicalOwnerIds = ["harrison"];
   snapshot.teams[1].canonicalOwnerIds = ["alex"];
-  snapshot.currentWeekData.entries[0].starters = [{ playerId: "p1", points: 7 }, { playerId: "p3", points: 12 }];
+  snapshot.currentWeekData.entries[0].starters = [{ playerId: "p1", points: 7 }, { playerId: "p3", points: 12 }, { playerId: "p4", points: 0 }];
   snapshot.currentWeekData.entries[1].starters = [{ playerId: "p2", points: 0 }];
   const nfl = { fetchedAt: "2026-09-20T12:00:00Z", games: { NYJ: { state: "final" }, BUF: { state: "scheduled" } } };
-  const matchups = currentMatchups(snapshot, { p1: { name: "Davante Adams", nflTeam: "NYJ" }, p2: { name: "Away Player", nflTeam: "BUF" }, p3: { name: "Other Player", nflTeam: "BUF" } }, espn.dashboard("2026", 2), nfl);
-  assert.equal(matchups.matchups[0].teams[0].projectedScore, 19);
+  const matchups = currentMatchups(snapshot, { p1: { name: "Davante Adams", nflTeam: "NYJ" }, p2: { name: "Away Player", nflTeam: "BUF" }, p3: { name: "Other Player", nflTeam: "BUF" }, p4: { name: "Test Kicker", nflTeam: "BUF" } }, espn.dashboard("2026", 2), nfl);
+  assert.equal(matchups.matchups[0].teams[0].projectedScore, 29.25);
   assert.equal(matchups.matchups[0].teams[0].starters[0].projectedPoints, 14.44);
-  assert.equal(matchups.matchups[0].teams[1].projectedScore, null);
+  assert.equal(matchups.matchups[0].teams[0].starters[0].statLine, "4 rec, 55 rec yd, 1 TD");
+  assert.equal(matchups.matchups[0].teams[0].starters[2].projectedPoints, 10.25);
+  assert.equal(matchups.matchups[0].teams[1].projectedScore, 9.25);
+  assert.equal(matchups.matchups[0].teams[1].starters[0].projectedPoints, 9.25);
+});
+
+test("Sleeper weekly stats format and merge into current starters", async () => {
+  assert.equal(sleeperStatLine({ pass_cmp: 12, pass_att: 18, pass_yd: 145, pass_td: 1 }), "12/18, 145 pass yd, 1 TD");
+  assert.equal(sleeperStatLine({ rush_att: 12, rush_yd: 70, rush_td: 1, rec: 4, rec_tgt: 6, rec_yd: 55, rec_td: 1 }), "70 rush yd, 4 rec, 55 rec yd, 2 TD");
+  assert.equal(sleeperStatLine({ fgm: 2, fga: 3, xpm: 3, xpa: 3 }), "FG 2/3, XP 3/3");
+  assert.equal(sleeperStatLine({ def_sack: 2, def_int: 1, pts_allow: 17 }, "defense"), "2 sack, 1 takeaway, 17 PA");
+
+  const stats = new SleeperWeeklyStats({ now: () => Date.parse("2026-09-20T12:00:00Z"), log, fetchImpl: async () => ({ ok: true, json: async () => ({
+    p1: { rec: 4, rec_tgt: 6, rec_yd: 55, rec_td: 1 },
+    TEAM_PIT: { def_sack: 2, def_fr: 1, pts_allow: 10 },
+  }) }) });
+  await stats.refresh("2026", 2);
+  const snapshot = fixture();
+  snapshot.metadata.startingSlots = ["WR", "DEF"];
+  snapshot.currentWeekData.entries[0].starters = [{ playerId: "p1", points: 7 }, { playerId: "PIT", points: 8 }];
+  snapshot.currentWeekData.entries[1].starters = [];
+  const matchups = currentMatchups(snapshot, { p1: { name: "Receiver", nflTeam: "BUF" }, PIT: { name: "Pittsburgh Steelers", position: "DEF", nflTeam: "PIT" } }, null, null, stats.dashboard("2026", 2));
+  assert.equal(matchups.matchups[0].teams[0].starters[0].statLine, "4 rec, 55 rec yd, 1 TD");
+  assert.equal(matchups.matchups[0].teams[0].starters[1].statLine, "2 sack, 1 takeaway, 10 PA");
+});
+
+test("Sleeper projections fill in when ESPN credentials are unavailable", async () => {
+  assert.equal(sleeperProjection({ pts_ppr: 12.345 }), 12.35);
+  assert.equal(sleeperProjection({ fgm_30_39: 1, fgm_40_49: 1, fgm_50p: 1, xpm: 2, fgmiss_50p: 1 }), 10);
+  const projections = new SleeperWeeklyProjections({ now: () => Date.parse("2026-09-20T12:00:00Z"), log, fetchImpl: async () => ({ ok: true, json: async () => ({
+    p1: { pts_ppr: 12.345 },
+    TEAM_PIT: { pts_ppr: 7.25 },
+  }) }) });
+  await projections.refresh("2026", 2);
+  const snapshot = fixture();
+  snapshot.metadata.startingSlots = ["WR", "DEF"];
+  snapshot.currentWeekData.entries[0].starters = [{ playerId: "p1", points: 0 }, { playerId: "PIT", points: 0 }];
+  snapshot.currentWeekData.entries[1].starters = [];
+  const espn = { unavailable: true, stale: false };
+  const matchups = currentMatchups(snapshot, { p1: { name: "Receiver", nflTeam: "BUF" }, PIT: { name: "Pittsburgh Steelers", position: "DEF", nflTeam: "PIT" } }, espn, null, null, projections.dashboard("2026", 2));
+  assert.equal(matchups.matchups[0].teams[0].starters[0].projectedPoints, 12.35);
+  assert.equal(matchups.matchups[0].teams[0].starters[1].projectedPoints, 7.25);
+  assert.equal(matchups.matchups[0].teams[0].projectedScore, 19.6);
 });
 
 test("store persists, deduplicates timestamps, archives corrections, recovers corrupted latest", async (t) => {

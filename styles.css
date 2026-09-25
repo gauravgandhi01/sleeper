@@ -41,9 +41,7 @@
 .live-icon-button { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 36px; width: 36px; height: 36px; padding: 0; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); cursor: pointer; }
 .live-icon-button:hover:not(:disabled) { border-color: var(--accent); background: var(--subtle); }
 .live-icon-button:disabled { opacity: .4; cursor: default; }
-.live-icon-button:focus-visible, .live-matchup-card:focus-visible, .live-auto input:focus-visible, .live-sort:focus-visible { outline: 2px solid var(--positive); outline-offset: 3px; }
-.live-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 18px 0; font-size: .8rem; color: var(--muted); }
-.live-sort { max-width: 190px; min-height: 36px; padding: 6px 28px 6px 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); color: var(--ink); font-size: .8rem; }
+.live-icon-button:focus-visible, .live-matchup-card:focus-visible, .live-auto input:focus-visible { outline: 2px solid var(--positive); outline-offset: 3px; }
 .live-matchup-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
 .live-matchup-card { min-width: 0; padding: 8px 20px 0; text-align: left; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); color: var(--ink); cursor: pointer; overflow: hidden; }
 .live-matchup-card:hover { border-color: var(--muted); }
@@ -77,42 +75,58 @@
   font-size: .78rem;
   font-weight: 900;
 }
-.live-score-bar { position: relative; display: flex; gap: 3px; height: 8px; margin: 8px 0 16px; overflow: visible; border-radius: 999px; background: var(--subtle); }
-.live-score-bar > span:not(.live-score-bar-marker) { min-width: 0; background: var(--line); }
-.live-score-bar > span:not(.live-score-bar-marker):first-child { border-radius: 999px 0 0 999px; }
-.live-score-bar > span:not(.live-score-bar-marker):nth-child(2) { border-radius: 0 999px 999px 0; }
-.live-score-bar > span.is-leading:not(.live-score-bar-marker) { background: var(--live-green); }
+.live-score-bar { position: relative; height: 18px; margin: 8px 0 16px; overflow: visible; border-radius: 999px; }
+.live-score-bar-layer { position: absolute; left: 0; right: 0; display: flex; gap: 3px; overflow: hidden; border-radius: 999px; background: var(--subtle); }
+.live-score-bar-layer span { min-width: 0; background: var(--line); }
+.live-score-bar-layer span:first-child { border-radius: 999px 0 0 999px; }
+.live-score-bar-layer span:nth-child(2) { border-radius: 0 999px 999px 0; }
+.live-score-bar-current { top: 7px; height: 8px; }
+.live-score-bar-projected { top: 0; height: 4px; opacity: .72; }
+.live-score-bar-current span.is-leading { background: var(--live-green); }
+.live-score-bar-projected span.is-projected-leading { background: color-mix(in srgb, var(--live-green) 50%, var(--line)); }
 .live-score-bar-marker { position: absolute; top: 50%; z-index: 1; display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; padding: 2px; border: 2px solid var(--panel); border-radius: 50%; background: var(--panel); box-shadow: 0 2px 8px rgba(0, 0, 0, .18); transform: translate(-50%, -50%); pointer-events: none; }
+.live-score-bar-marker-projected { top: 2px; width: 20px; height: 20px; opacity: .76; border-style: dashed; box-shadow: none; }
 .live-score-bar-marker .team-avatar { width: 22px; height: 22px; flex-basis: 22px; font-size: .5rem; }
+.live-score-bar-marker-projected .team-avatar { width: 15px; height: 15px; flex-basis: 15px; font-size: .42rem; }
 .live-card-footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 46px; border-top: 1px solid var(--line); color: var(--muted); font-size: .74rem; }
 .live-chevron { font-size: 1.5rem; }
 .live-detail-nav { display: flex; gap: 8px; align-items: center; padding: 18px 0; }
-.live-detail-nav h3 { flex: 1; font-size: .9rem; margin: 0 0 0 4px; }
+.live-detail-nav h3 { flex: 0 0 auto; font-size: .9rem; margin: 0 0 0 4px; }
+.live-export-button { flex: 0 0 auto; }
+.live-matchup-picker { display: flex; align-items: center; justify-content: center; gap: 9px; overflow-x: auto; flex: 1; max-width: none; padding: 4px; }
+.live-matchup-picker-button { display: inline-flex; align-items: center; justify-content: center; gap: 0; flex: 0 0 auto; min-width: 68px; height: 44px; padding: 0 9px; border: 1px solid var(--line); border-radius: 999px; background: var(--panel); cursor: pointer; }
+.live-matchup-picker-button:hover { border-color: var(--accent-soft); background: var(--subtle); }
+.live-matchup-picker-button:focus-visible { outline: 2px solid var(--positive); outline-offset: 2px; }
+.live-matchup-picker-button.is-selected { border-color: var(--accent-soft); box-shadow: inset 0 0 0 1px var(--accent-soft); background: color-mix(in srgb, var(--accent-soft) 10%, var(--panel)); }
+.live-matchup-picker-button .team-avatar { width: 32px; height: 32px; flex-basis: 32px; font-size: .62rem; border-radius: 50%; }
+.live-matchup-picker-button .team-avatar + .team-avatar { margin-left: -9px; }
 .live-detail-summary { position: sticky; top: var(--live-sticky-top, 73px); z-index: 5; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 44px; padding: 6px 0 12px; background: var(--bg); border-bottom: 1px solid var(--line); }
+.live-matchup-export { min-width: 0; }
 .live-detail-margin { grid-column: 1 / -1; margin: 4px 0 0; text-align: center; font-size: .75rem; color: var(--muted); }
 .live-starter-row { display: grid; grid-template-columns: minmax(0, 1fr) 44px minmax(0, 1fr); align-items: stretch; border-bottom: 1px solid var(--line); }
-.live-roster-labels { padding-block: 14px; font-size: .72rem; color: var(--muted); text-align: center; }
+.live-roster-labels { padding-block: 10px; font-size: .72rem; color: var(--muted); text-align: center; }
 .live-roster-labels span { overflow-wrap: anywhere; }
-.live-starter { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 12px; min-width: 0; }
+.live-starter { display: flex; align-items: center; justify-content: space-between; gap: 9px; padding: 9px 10px; min-width: 0; }
 .live-starter[data-game-state="live"] { background: var(--starter-live-bg); box-shadow: inset 3px 0 var(--live-green); }
 .live-starter[data-game-state="scheduled"] { background: var(--starter-upcoming-bg); box-shadow: inset 3px 0 var(--starter-upcoming-ink); }
 .live-starter[data-game-state="final"] { background: var(--starter-final-bg); box-shadow: inset 3px 0 var(--starter-final-edge); }
 .live-starter[data-game-state="scheduled"] .live-player-name,
 .live-starter[data-game-state="scheduled"] .live-player-points { color: var(--muted); }
 .live-starter[data-game-state="scheduled"] .live-player-status { opacity: .78; }
-.live-player-copy { min-width: 0; }
-.live-player-name { display: block; font-size: .9rem; overflow-wrap: anywhere; }
-.live-player-status { display: block; font-size: .72rem; color: var(--muted); margin-top: 3px; overflow-wrap: anywhere; }
+.live-player-copy { min-width: 0; line-height: 1.18; }
+.live-player-name { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; font-size: .86rem; overflow-wrap: anywhere; }
+.live-player-name-text { min-width: 0; }
+.live-player-status { display: inline-flex; align-items: center; gap: 5px; max-width: 100%; font-size: .68rem; color: var(--muted); margin-top: 2px; overflow-wrap: anywhere; }
+.live-player-status span { min-width: 0; }
+.live-game-relation { color: var(--muted); font-size: .64rem; font-weight: 900; text-transform: uppercase; }
+.live-player-status.has-matchup .live-game-detail::before { content: "\00b7"; margin-right: 5px; color: var(--muted); }
+.live-nfl-logo { width: 16px; height: 16px; flex: 0 0 16px; object-fit: contain; border-radius: 4px; }
+.live-player-team-logo { width: 15px; height: 15px; flex-basis: 15px; }
+.live-player-statline { color: var(--muted); font-size: .66rem; font-weight: 750; overflow-wrap: anywhere; }
 .live-player-score-stack { display: grid; justify-items: end; gap: 2px; flex: 0 0 auto; }
-.live-player-points { font-size: .95rem; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.live-player-points { font-size: .9rem; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .live-player-projected { color: var(--muted); font-size: .65rem; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .live-slot { display: flex; align-items: center; justify-content: center; font-size: .65rem; color: var(--muted); background: var(--subtle); }
-.live-activity { margin-top: 28px; }
-.live-activity h3 { font-size: 1rem; margin-bottom: 12px; }
-.live-activity ol { list-style: none; padding: 0; margin: 0; }
-.live-activity li { display: grid; grid-template-columns: 175px minmax(0, 1fr); gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--line); font-size: .8rem; }
-.live-activity time { color: var(--muted); font-size: .72rem; }
-.live-activity p { margin: 0; }
 .live-empty { padding: 40px 0; color: var(--muted); }
 .score-changed { animation: score-update 2.5s ease-out; }
 @keyframes score-update { from { background: var(--positive-bg); outline: 4px solid var(--positive-bg); } to { background: transparent; outline: 4px solid transparent; } }
@@ -131,14 +145,15 @@
   .live-detail-summary .live-score-stack { grid-column: 1 / -1; justify-self: start; justify-items: start; }
   .live-detail-summary .live-team-status { font-size: .62rem; }
   .live-starter-row { grid-template-columns: minmax(0, 1fr) 30px minmax(0, 1fr); }
-  .live-starter { padding: 12px 6px; flex-wrap: wrap; gap: 4px; align-content: center; }
+  .live-starter { padding: 8px 6px; flex-wrap: wrap; gap: 4px; align-content: center; }
   .live-player-copy { flex: 1 1 100%; }
-  .live-player-name { font-size: .8rem; }
-  .live-player-status { font-size: .65rem; }
+  .live-player-name { font-size: .78rem; }
+  .live-player-status { font-size: .62rem; }
+  .live-nfl-logo { width: 15px; height: 15px; flex-basis: 15px; }
+  .live-player-statline { font-size: .6rem; }
   .live-player-points { font-size: .85rem; }
   .live-player-projected { font-size: .6rem; }
   .live-slot { font-size: .55rem; }
-  .live-activity li { grid-template-columns: 1fr; gap: 4px; }
 }
 @media (max-width: 480px) {
   .live-team { grid-template-columns: 38px minmax(0, 1fr) auto; gap: 8px; min-height: 76px; }
@@ -476,16 +491,16 @@ h2 { max-width: 640px; font-size: clamp(1.45rem, 3vw, 2.35rem); }
   font-weight: 850;
 }
 
-.team-filter { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 7px; max-width: 560px; }
+.team-filter { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 5px; max-width: 560px; }
 .team-filter label {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
-  padding: 7px 10px;
+  gap: 5px;
+  padding: 4px 7px;
   border: 1px solid var(--line);
   border-radius: 999px;
   cursor: pointer;
-  font-size: .78rem;
+  font-size: .72rem;
   font-weight: 800;
 }
 .team-filter label:has(input:checked) { border-color: var(--team-color); box-shadow: inset 0 0 0 1px var(--team-color); }
@@ -493,11 +508,19 @@ h2 { max-width: 640px; font-size: clamp(1.45rem, 3vw, 2.35rem); }
 .trend-owner-key {
   border: 1px solid var(--line);
   border-radius: 999px;
-  padding: 5px 8px;
+  padding: 3px 6px;
   cursor: pointer;
 }
 .trend-owner-key:has(input:checked) { border-color: var(--team-color); box-shadow: inset 0 0 0 1px var(--team-color); }
 .trend-owner-key input { accent-color: var(--team-color); }
+.team-filter .owner-icon,
+#trendControls .owner-icon,
+#ownersContent .owner-trend-filter .owner-icon {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  margin-right: 0;
+}
 
 .chart-wrap { min-width: 0; }
 .chart-wrap > .export-button { margin: 0 0 10px auto; }
@@ -544,8 +567,8 @@ h2 { max-width: 640px; font-size: clamp(1.45rem, 3vw, 2.35rem); }
 .matrix-result-loss { filter: grayscale(.25); opacity: .72; }
 .matrix-ranked { position: relative; }
 .matrix-rank { position: absolute; left: 3px; bottom: 4px; color: var(--ink); font-size: .55rem; font-weight: 400; line-height: 1; font-variant-numeric: tabular-nums; }
-.trend-owner-legend { display: flex; flex-wrap: wrap; gap: 8px 10px; max-width: 720px; }
-.trend-owner-key { display: inline-flex; align-items: center; gap: 5px; font-size: .76rem; }
+.trend-owner-legend { display: flex; flex-wrap: wrap; gap: 6px 8px; max-width: 720px; }
+.trend-owner-key { display: inline-flex; align-items: center; gap: 4px; font-size: .72rem; }
 .career-performance { display: grid; grid-template-columns: repeat(auto-fit, minmax(145px, 1fr)); gap: 12px; margin-block: 16px; }
 .data-table.history-table tbody tr td.career-colored, .career-colored { background-color: color-mix(in srgb, var(--score-color) var(--score-shade), var(--panel)); }
 .table-actions { display: flex; align-items: start; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin: 0 0 10px; }
@@ -608,6 +631,14 @@ h2 { max-width: 640px; font-size: clamp(1.45rem, 3vw, 2.35rem); }
 .benchmark span, .benchmark strong { display: block; }
 .benchmark span { color: var(--muted); font-size: .75rem; font-weight: 800; text-transform: uppercase; letter-spacing: .07em; }
 .benchmark strong { margin-top: 12px; font-size: 1.8rem; letter-spacing: -.035em; }
+.benchmark-value-row { display: flex; align-items: center; gap: 8px; margin-top: 12px; }
+.benchmark-value-row strong { margin-top: 0; }
+.benchmark-value-row .owner-icon {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  margin-right: 0;
+}
 .benchmark .benchmark-rank {
   margin-top: 6px;
   color: var(--accent-soft);

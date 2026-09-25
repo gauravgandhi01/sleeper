@@ -408,6 +408,7 @@ test("live matrix cells have no heat or median marker and do not rescale finaliz
   assert.doesNotMatch(doc.getElementById("leagueBenchmarks").textContent, /Median pts > median|Finalized scores/);
   assert.match(doc.getElementById("leagueBenchmarks").textContent, /Season high/);
   assert.match(doc.getElementById("leagueBenchmarks").textContent, /Season low/);
+  assert.ok([...doc.querySelectorAll("#leagueBenchmarks .benchmark")].filter((card) => /Season high|Season low/.test(card.textContent)).every((card) => card.querySelector(".owner-icon-label")));
   for (const button of doc.querySelectorAll("#matrixControls button")) {
     button.click();
     assert.deepEqual([...doc.querySelectorAll("#matrixTable tbody tr")].map((row) => row.lastElementChild.textContent), totals);

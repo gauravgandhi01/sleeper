@@ -5,14 +5,42 @@ import { linkCurrentOwners } from "./identities.js";
 import { nflTeam } from "./nfl.js";
 import { projectionKey } from "./espn-fantasy.js";
 
-function projectionForStarter(starter, projections) {
+function projectionForStarter(starter, projections, fallbackProjections) {
+  if (starter.playerId == null) return null;
+  if (projections && !projections.stale && !projections.unavailable) {
+    const name = playersName(starter);
+    const byDefense = starter.slot === "DEF" && starter.nflTeam ? projections.defensesByTeam?.get(starter.nflTeam) : null;
+    const byName = byDefense || projections.playersByName?.get(projectionKey(name));
+    const value = (byDefense || byName)?.projectedPoints;
+    if (Number.isFinite(value)) return value;
+  }
+  if (fallbackProjections && !fallbackProjections.stale && !fallbackProjections.unavailable) {
+    const ids = starter.slot === "DEF" && starter.nflTeam ? [`TEAM_${starter.nflTeam}`, starter.playerId] : [starter.playerId];
+    for (const id of ids) {
+      const value = fallbackProjections.playersById?.get?.(String(id))?.projectedPoints;
+      if (Number.isFinite(value)) return value;
+    }
+  }
+  return null;
+}
+
+function statLineForStarter(starter, projections) {
   if (!projections || projections.stale || projections.unavailable) return null;
   if (starter.playerId == null) return null;
   const name = playersName(starter);
   const byDefense = starter.slot === "DEF" && starter.nflTeam ? projections.defensesByTeam?.get(starter.nflTeam) : null;
   const byName = byDefense || projections.playersByName?.get(projectionKey(name));
-  const value = (byDefense || byName)?.projectedPoints;
-  return Number.isFinite(value) ? value : null;
+  return byName?.statLine || null;
+}
+
+function sleeperStatLineForStarter(starter, weeklyStats) {
+  if (!weeklyStats || weeklyStats.stale || weeklyStats.unavailable || starter.playerId == null) return null;
+  const ids = starter.slot === "DEF" && starter.nflTeam ? [`TEAM_${starter.nflTeam}`, starter.playerId] : [starter.playerId];
+  for (const id of ids) {
+    const line = weeklyStats.lines?.get?.(String(id));
+    if (line) return line;
+  }
+  return null;
 }
 
 function playersName(starter) {
@@ -22,11 +50,11 @@ function playersName(starter) {
 function gameStateForStarter(starter, nflStatus) {
   if (!starter?.nflTeam || nflStatus?.stale || nflStatus?.unavailable) return null;
   const aliases = { JAC: "JAX", LA: "LAR", WSH: "WAS" };
-  return nflStatus.games?.[aliases[starter.nflTeam] || starter.nflTeam]?.state || null;
+  return nflStatus?.games?.[aliases[starter.nflTeam] || starter.nflTeam]?.state || null;
 }
 
-function projectedScoreForTeam(side, projections, nflStatus) {
-  if (!projections || projections.stale || projections.unavailable) return null;
+function projectedScoreForTeam(side, projections, nflStatus, fallbackProjections = null) {
+  if ((!projections || projections.stale || projections.unavailable) && (!fallbackProjections || fallbackProjections.stale || fallbackProjections.unavailable)) return null;
   let hasProjection = false;
   const starterSum = (side.starters || []).reduce((sum, starter) => {
     if (starter.playerId == null) return sum;
@@ -46,7 +74,7 @@ function projectionStatus(status) {
   return { season, week, fetchedAt, stale, unavailable, failed, reason, source };
 }
 
-export function currentMatchups(snapshot, players = {}, projections = null, nflStatus = null) {
+export function currentMatchups(snapshot, players = {}, projections = null, nflStatus = null, weeklyStats = null, fallbackProjections = null) {
   const { currentWeek, regularSeasonEnd } = snapshot.metadata;
   if (currentWeek > regularSeasonEnd) return { week: null, status: "season_complete", matchups: [], unpairedTeams: [] };
   const week = snapshot.currentWeekData;
@@ -82,9 +110,9 @@ export function currentMatchups(snapshot, players = {}, projections = null, nflS
       name: starter.playerId === null ? "Empty slot" : players[starter.playerId]?.name || `Player ${starter.playerId}`,
       position: players[starter.playerId]?.position || null,
       nflTeam: nflTeam(players[starter.playerId]?.nflTeam || (snapshot.metadata.startingSlots?.[index] === "DEF" ? starter.playerId : null)) || null,
-    })).map((starter) => ({ ...starter, projectedPoints: projectionForStarter(starter, projections) })) : null;
+    })).map((starter) => ({ ...starter, projectedPoints: projectionForStarter(starter, projections, fallbackProjections), statLine: sleeperStatLineForStarter(starter, weeklyStats) || statLineForStarter(starter, projections) })) : null;
     const side = { ...teams.get(entry.rosterId), record: records.get(entry.rosterId) || { wins: 0, losses: 0, ties: 0 }, score: entry.score, starters };
-    side.projectedScore = projectedScoreForTeam(side, projections, nflStatus);
+    side.projectedScore = projectedScoreForTeam(side, projections, nflStatus, fallbackProjections);
     if (entry.matchupId == null) unpairedTeams.push(side);
     else groups.set(entry.matchupId, [...(groups.get(entry.matchupId) || []), side]);
   }
@@ -98,8 +126,8 @@ export function currentMatchups(snapshot, players = {}, projections = null, nflS
 }
 
 export class DashboardService {
-  constructor({ store, leagueId, playerDirectory = null, draftBoard = null, nflScoreboard = null, espnFantasy = null, fetchSeason = fetchSleeperSeason, now = Date.now, log = console }) {
-    Object.assign(this, { store, leagueId, playerDirectory, draftBoard, nflScoreboard, espnFantasy, fetchSeason, now, log });
+  constructor({ store, leagueId, playerDirectory = null, draftBoard = null, nflScoreboard = null, espnFantasy = null, sleeperStats = null, sleeperProjections = null, fetchSeason = fetchSleeperSeason, now = Date.now, log = console }) {
+    Object.assign(this, { store, leagueId, playerDirectory, draftBoard, nflScoreboard, espnFantasy, sleeperStats, sleeperProjections, fetchSeason, now, log });
     this.saved = null;
     this.lastAttempt = -Infinity;
     this.failure = null;
@@ -137,6 +165,8 @@ export class DashboardService {
     const { season, currentWeek, regularSeasonEnd } = snapshot.metadata;
     const nflStatus = currentWeek <= regularSeasonEnd ? this.nflScoreboard?.dashboard(season, currentWeek) || null : null;
     const espnFantasyStatus = currentWeek <= regularSeasonEnd ? this.espnFantasy?.dashboard(season, currentWeek) || null : null;
-    return { schemaVersion: 1, stats: calculateStats(snapshot), nflStatus, espnFantasyStatus: projectionStatus(espnFantasyStatus), draftBoard: this.draftBoard?.dashboard(snapshot.metadata.draftId, snapshot.teams) || null, currentWeekMatchups: currentMatchups(snapshot, this.playerDirectory?.players, espnFantasyStatus, nflStatus), lastSuccessfulFetchAt, stale, warnings };
+    const sleeperStatsStatus = currentWeek <= regularSeasonEnd ? this.sleeperStats?.dashboard(season, currentWeek) || null : null;
+    const sleeperProjectionStatus = currentWeek <= regularSeasonEnd ? this.sleeperProjections?.dashboard(season, currentWeek) || null : null;
+    return { schemaVersion: 1, stats: calculateStats(snapshot), nflStatus, espnFantasyStatus: projectionStatus(espnFantasyStatus), draftBoard: this.draftBoard?.dashboard(snapshot.metadata.draftId, snapshot.teams) || null, currentWeekMatchups: currentMatchups(snapshot, this.playerDirectory?.players, espnFantasyStatus, nflStatus, sleeperStatsStatus, sleeperProjectionStatus), lastSuccessfulFetchAt, stale, warnings };
   }
 }

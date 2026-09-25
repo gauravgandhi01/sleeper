@@ -36,6 +36,8 @@ export async function createApp({ service, publicBaseUrl = "http://localhost:417
     if (metadata && metadata.currentWeek <= metadata.regularSeasonEnd) await Promise.all([
       service.nflScoreboard?.refresh(metadata.season, metadata.currentWeek),
       service.espnFantasy?.refresh(metadata.season, metadata.currentWeek),
+      service.sleeperStats?.refresh(metadata.season, metadata.currentWeek),
+      service.sleeperProjections?.refresh(metadata.season, metadata.currentWeek),
     ]);
     const value = service.dashboard();
     if (!value) return res.status(503).json({ error: "League data is temporarily unavailable. Please try again shortly." });

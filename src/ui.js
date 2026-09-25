@@ -84,7 +84,56 @@ function svgStringToPng(svgText, filename) {
   image.src = url;
 }
 
-function exportSvgAsPng(svg, filename) {
+function blobToDataUrl(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
+
+async function inlineSvgImages(svg) {
+  await Promise.all([...svg.querySelectorAll("image")].map(async (image) => {
+    const href = image.getAttribute("href") || image.getAttributeNS("http://www.w3.org/1999/xlink", "href");
+    if (!href || href.startsWith("data:")) return;
+    try {
+      const response = await fetch(href);
+      if (!response.ok) return;
+      image.setAttribute("href", await blobToDataUrl(await response.blob()));
+    } catch {
+      // Keep the original href; the PNG export may still work in same-origin browsers.
+    }
+  }));
+}
+
+function truncatedText(value, limit = 145) {
+  const text = String(value || "");
+  return text.length > limit ? `${text.slice(0, limit - 1)}…` : text;
+}
+
+function addExportHeader(svg, width, height, header = {}) {
+  if (!header.title && !header.subtitle) return { svg, width, height };
+  const headerHeight = 74;
+  const output = svgEl("svg", { xmlns: "http://www.w3.org/2000/svg", width, height: height + headerHeight, viewBox: `0 0 ${width} ${height + headerHeight}` });
+  output.append(svgEl("rect", { x: 0, y: 0, width, height: height + headerHeight, fill: getComputedStyle(document.documentElement).getPropertyValue("--panel").trim() || "#ffffff" }));
+  if (header.title) {
+    const title = svgEl("text", { x: 56, y: 30, fill: getComputedStyle(document.documentElement).getPropertyValue("--ink").trim() || "#111111", "font-family": "system-ui, sans-serif", "font-size": 22, "font-weight": 800 });
+    title.textContent = truncatedText(header.title, 90);
+    output.append(title);
+  }
+  if (header.subtitle) {
+    const subtitle = svgEl("text", { x: 56, y: 53, fill: getComputedStyle(document.documentElement).getPropertyValue("--muted").trim() || "#66726a", "font-family": "system-ui, sans-serif", "font-size": 13, "font-weight": 600 });
+    subtitle.textContent = truncatedText(header.subtitle);
+    output.append(subtitle);
+  }
+  const group = svgEl("g", { transform: `translate(0 ${headerHeight})` });
+  while (svg.firstChild) group.append(svg.firstChild);
+  output.append(group);
+  return { svg: output, width, height: height + headerHeight };
+}
+
+async function exportSvgAsPng(svg, filename, header = {}) {
   const clone = svg.cloneNode(true);
   const box = clone.viewBox?.baseVal;
   const width = box?.width || svg.getBoundingClientRect().width || 980;
@@ -92,10 +141,12 @@ function exportSvgAsPng(svg, filename) {
   clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
   clone.setAttribute("width", String(width));
   clone.setAttribute("height", String(height));
+  await inlineSvgImages(clone);
   const style = svgEl("style");
   style.textContent = ".chart-grid{stroke:#d8ded8}.chart-axis-label{fill:#66726a;font:700 11px system-ui}.chart-line{fill:none;stroke-width:3.25;stroke-linecap:round;stroke-linejoin:round}.chart-median{fill:none;stroke:#66726a;stroke-width:2;stroke-dasharray:7 7;opacity:.7}.chart-dot{stroke:#fff;stroke-width:2.5}.owner-trend-avatar{clip-path:circle(50%)}.owner-trend-grave{font:19px system-ui;dominant-baseline:middle}";
   clone.prepend(style);
-  svgStringToPng(new XMLSerializer().serializeToString(clone), filename);
+  const prepared = addExportHeader(clone, width, height, header);
+  svgStringToPng(new XMLSerializer().serializeToString(prepared.svg), filename);
 }
 
 function exportElementAsPng(element, filename) {
@@ -121,11 +172,62 @@ function exportElementAsPng(element, filename) {
   svgStringToPng(svgText, filename);
 }
 
+function exportStatbookAsPng(stats, teams, columns) {
+  const teamWidth = 170;
+  const colWidth = 92;
+  const rowHeight = 30;
+  const headerHeight = 94;
+  const width = teamWidth + (columns.length * colWidth) + 36;
+  const height = headerHeight + ((teams.length + 1) * rowHeight) + 30;
+  const svg = svgEl("svg", { xmlns: "http://www.w3.org/2000/svg", width, height, viewBox: `0 0 ${width} ${height}` });
+  const bg = getComputedStyle(document.documentElement).getPropertyValue("--panel").trim() || "#ffffff";
+  const ink = getComputedStyle(document.documentElement).getPropertyValue("--ink").trim() || "#111111";
+  const muted = getComputedStyle(document.documentElement).getPropertyValue("--muted").trim() || "#66726a";
+  const line = getComputedStyle(document.documentElement).getPropertyValue("--line").trim() || "#d8ded8";
+  svg.append(svgEl("rect", { width, height, fill: bg }));
+  const title = svgEl("text", { x: 18, y: 30, fill: ink, "font-family": "system-ui, sans-serif", "font-size": 22, "font-weight": 800 });
+  title.textContent = `Stat book · ${stats.metadata?.season || "Season"}`;
+  svg.append(title);
+  const subtitle = svgEl("text", { x: 18, y: 54, fill: muted, "font-family": "system-ui, sans-serif", "font-size": 13, "font-weight": 600 });
+  subtitle.textContent = truncatedText(`${teams.length} selected teams · Finalized regular-season weeks only`, 130);
+  svg.append(subtitle);
+  const top = headerHeight;
+  svg.append(svgEl("line", { x1: 18, x2: width - 18, y1: top - 16, y2: top - 16, stroke: line }));
+  const addText = (text, x, y, options = {}) => {
+    const node = svgEl("text", {
+      x,
+      y,
+      fill: options.fill || ink,
+      "font-family": "system-ui, sans-serif",
+      "font-size": options.size || 12,
+      "font-weight": options.weight || 500,
+      "text-anchor": options.anchor || "start",
+    });
+    node.textContent = truncatedText(text, options.limit || 20);
+    svg.append(node);
+    return node;
+  };
+  addText("Team", 18, top, { fill: muted, weight: 800, size: 11 });
+  columns.forEach((column, index) => addText(column.label, teamWidth + 18 + (index * colWidth) + colWidth - 8, top, { fill: muted, weight: 800, size: 11, anchor: "end", limit: 14 }));
+  teams.forEach((team, rowIndex) => {
+    const y = top + ((rowIndex + 1) * rowHeight);
+    if (rowIndex % 2 === 0) svg.append(svgEl("rect", { x: 12, y: y - 20, width: width - 24, height: rowHeight, fill: "rgba(100,112,106,.06)" }));
+    addText(team.teamName, 18, y, { weight: 700, limit: 22 });
+    addText(shortOwnerName(team.managerName), 18, y + 13, { fill: muted, size: 10, limit: 24 });
+    columns.forEach((column, index) => {
+      const rendered = column.format.length > 1 ? column.format(team[column.key], team) : column.format(team[column.key]);
+      addText(rendered, teamWidth + 18 + (index * colWidth) + colWidth - 8, y, { anchor: "end", limit: 16 });
+    });
+  });
+  svgStringToPng(new XMLSerializer().serializeToString(svg), `${safeFilename(`statbook-${stats.metadata?.season || "season"}`)}.png`);
+}
+
 function exportButton(label, onClick) {
   const button = el("button", "refresh-button export-button");
   button.type = "button";
   button.title = label;
-  button.append(el("span", "refresh-icon", "⇩"), el("span", "refresh-label", label));
+  button.setAttribute("aria-label", label);
+  button.textContent = "Export";
   button.addEventListener("click", onClick);
   return button;
 }
@@ -484,8 +586,13 @@ function renderTrendChart(stats) {
       svg.append(grave);
     }
   });
+  const selectedTeams = series.map(({ team }) => `${team.teamName} (${shortOwnerName(team.managerName)})`).join(", ");
+  const weekRange = stats.weeks.length ? `Weeks ${stats.weeks[0].week}-${stats.weeks.at(-1).week}` : "No finalized weeks";
   wrap.append(
-    exportButton("Export chart", () => exportSvgAsPng(svg, `${safeFilename(`trends-${stats.metadata?.season || "season"}`)}.png`)),
+    exportButton("Export chart", () => exportSvgAsPng(svg, `${safeFilename(`trends-${stats.metadata?.season || "season"}`)}.png`, {
+      title: `Cumulative vs median · ${stats.metadata?.season || "Season"}`,
+      subtitle: `${weekRange} · Teams: ${selectedTeams}`,
+    })),
     svg,
     el("p", "chart-legend-note", "Selected owners · Running sum of score minus each week’s median · Above zero means cumulatively above median · Finalized weeks only"),
   );
@@ -659,20 +766,27 @@ function renderWeekly(stats) {
 function renderBenchmarks(stats) {
   const root = byId("leagueBenchmarks");
   root.replaceChildren();
-  const scores = stats.weeks.flatMap((week) => week.entries.map((entry) => entry.score));
+  const scoreEntries = stats.weeks.flatMap((week) => week.entries.filter((entry) => Number.isFinite(entry.score)));
+  const scores = scoreEntries.map((entry) => entry.score);
+  const seasonHigh = scoreEntries.reduce((best, entry) => !best || entry.score > best.score ? entry : best, null);
+  const seasonLow = scoreEntries.reduce((worst, entry) => !worst || entry.score < worst.score ? entry : worst, null);
   const metrics = [
     ["Total mean", point(stats.league.overallMean)],
     ["Total median", point(stats.league.overallMedian)],
     ["Total deviation", point(stats.league.scoreDeviation)],
     ["Median weekly median", point(stats.league.medianOfWeeklyMedians)],
     ["Mean pts > median", signed(stats.league.meanDeltaMedian)],
-    ["Season high", point(scores.length ? Math.max(...scores) : null)],
+    ["Season high", point(seasonHigh?.score), seasonHigh],
     ["Mean pts deviation", point(stats.league.deltaDeviation)],
-    ["Season low", point(scores.length ? Math.min(...scores) : null)],
+    ["Season low", point(seasonLow?.score), seasonLow],
   ];
-  metrics.forEach(([label, value]) => {
+  metrics.forEach(([label, value, entry]) => {
     const card = el("article", "benchmark");
-    card.append(el("span", "", label), el("strong", "", value));
+    card.append(el("span", "", label));
+    const valueRow = el("div", "benchmark-value-row");
+    valueRow.append(el("strong", "", value));
+    if (entry?.team) valueRow.append(compactOwner({ id: entry.team.canonicalOwnerIds?.[0], name: entry.team.managerName }));
+    card.append(valueRow);
     root.append(card);
   });
 }
@@ -750,7 +864,8 @@ function renderStatbookTable(stats) {
   });
   thead.append(groupRow, labelRow);
   const tbody = el("tbody");
-  sortedTeams(stats.teams, uiState.statSort).filter((team) => !statbookHiddenTeams.has(trendOwnerId(team))).forEach((team) => {
+  const visibleTeams = sortedTeams(stats.teams, uiState.statSort).filter((team) => !statbookHiddenTeams.has(trendOwnerId(team)));
+  visibleTeams.forEach((team) => {
     const row = el("tr");
     const identity = el("td");
     identity.append(makeTeamLabel(team));
@@ -768,7 +883,7 @@ function renderStatbookTable(stats) {
   });
   table.append(thead, tbody);
   const actions = el("div", "table-actions");
-  actions.append(renderStatbookFilter(stats), exportButton("Export Stat book", () => exportElementAsPng(table, `${safeFilename(`statbook-${stats.metadata?.season || "season"}`)}.png`)));
+  actions.append(renderStatbookFilter(stats), exportButton("Export Stat book", () => exportStatbookAsPng(stats, visibleTeams, columns)));
   root.append(actions, table);
 }
 
@@ -1272,7 +1387,11 @@ function renderOwnerMedianTrend(root, owners, qualifyingSeasons) {
       svg.append(grave);
     }
   });
-  title.append(exportButton("Export chart", () => exportSvgAsPng(svg, `${safeFilename(`owner-cumulative-${ownerEra}`)}.png`)));
+  const selectedOwners = visibleRows.map((owner) => shortOwnerName(owner.name)).join(", ");
+  title.append(exportButton("Export chart", () => exportSvgAsPng(svg, `${safeFilename(`owner-cumulative-${ownerEra}`)}.png`, {
+    title: `Owner cumulative vs median · ${ownerEra === "ten-team" ? "10-team era" : "All seasons"}`,
+    subtitle: `${seasonRange(qualifyingSeasons || [])} · Owners: ${selectedOwners}`,
+  })));
   wrap.append(svg);
   section.append(wrap);
   root.append(section);

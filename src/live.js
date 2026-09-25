@@ -2,7 +2,6 @@ import { LiveActivity, gameFor, starterCounts, statusFresh } from "./live-state.
 import { OWNER_ICONS, OWNER_ICON_VERSIONS } from "./owner-icons.js";
 
 const activity = new LiveActivity();
-let sortMode = "order";
 let order = [];
 let orderKey = "";
 let auto = true;
@@ -15,6 +14,14 @@ let navigateBack = false;
 const points = (value) => Number.isFinite(value) ? value.toFixed(2) : "\u2014";
 const time = (value) => value ? new Date(value).toLocaleTimeString([], { hour: "numeric", minute: "2-digit", second: "2-digit" }) : "Unavailable";
 const recordText = (record) => record ? `${record.wins}-${record.losses}${record.ties ? `-${record.ties}` : ""}` : "";
+const safeFilename = (value) => String(value || "export").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "export";
+const ESPN_NFL_LOGO_BASE = "https://a.espncdn.com/i/teamlogos/nfl/500";
+const NFL_LOGO_CODES = {
+  ARI: "ari", ATL: "atl", BAL: "bal", BUF: "buf", CAR: "car", CHI: "chi", CIN: "cin", CLE: "cle",
+  DAL: "dal", DEN: "den", DET: "det", GB: "gb", HOU: "hou", IND: "ind", JAX: "jax", KC: "kc",
+  LV: "lv", LAC: "lac", LAR: "lar", MIA: "mia", MIN: "min", NE: "ne", NO: "no", NYG: "nyg",
+  NYJ: "nyj", PHI: "phi", PIT: "pit", SEA: "sea", SF: "sf", TB: "tb", TEN: "ten", WAS: "wsh",
+};
 function node(tag, cls = "", text) {
   const element = document.createElement(tag);
   element.className = cls;
@@ -35,6 +42,73 @@ function iconButton(icon, label, action, id) {
   } else button.append(node("span", "", { ArrowLeft: "\u2190", ChevronLeft: "\u2039", ChevronRight: "\u203a", RefreshCw: "\u21bb" }[icon]));
   button.addEventListener("click", action);
   return button;
+}
+
+function exportButton(label, action) {
+  const button = node("button", "refresh-button export-button live-export-button", "Export");
+  button.type = "button";
+  button.title = label;
+  button.setAttribute("aria-label", label);
+  button.addEventListener("click", action);
+  return button;
+}
+
+function blobToDataUrl(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
+
+async function inlineImages(root) {
+  await Promise.all([...root.querySelectorAll("img")].map(async (image) => {
+    try {
+      const response = await fetch(new URL(image.getAttribute("src"), window.location.href));
+      if (!response.ok) throw new Error("image fetch failed");
+      image.src = await blobToDataUrl(await response.blob());
+    } catch {
+      image.remove();
+    }
+  }));
+}
+
+async function exportElementAsPng(element, filename) {
+  const clone = element.cloneNode(true);
+  await inlineImages(clone);
+  const width = Math.ceil(element.scrollWidth || element.getBoundingClientRect().width || 1100);
+  const height = Math.ceil(element.scrollHeight || element.getBoundingClientRect().height || 700);
+  const css = [...document.styleSheets].map((sheet) => {
+    try { return [...sheet.cssRules].map((rule) => rule.cssText).join("\n"); }
+    catch { return ""; }
+  }).join("\n");
+  const wrapper = document.createElement("div");
+  wrapper.setAttribute("xmlns", "http://www.w3.org/1999/xhtml");
+  wrapper.style.background = getComputedStyle(document.documentElement).getPropertyValue("--panel").trim() || "#ffffff";
+  wrapper.style.color = getComputedStyle(document.documentElement).getPropertyValue("--ink").trim() || "#111111";
+  wrapper.style.padding = "18px";
+  wrapper.style.width = `${width}px`;
+  const style = document.createElement("style");
+  style.textContent = `${css}\n.live-detail-summary{position:static}.live-matchup-export{background:transparent}`;
+  wrapper.append(style, clone);
+  const serialized = new XMLSerializer().serializeToString(wrapper);
+  const svgText = `<svg xmlns="http://www.w3.org/2000/svg" width="${width + 36}" height="${height + 36}"><foreignObject width="100%" height="100%">${serialized}</foreignObject></svg>`;
+  const image = new Image();
+  const url = URL.createObjectURL(new Blob([svgText], { type: "image/svg+xml;charset=utf-8" }));
+  image.onload = () => {
+    const canvas = document.createElement("canvas");
+    canvas.width = width + 36;
+    canvas.height = height + 36;
+    canvas.getContext("2d").drawImage(image, 0, 0);
+    URL.revokeObjectURL(url);
+    const link = document.createElement("a");
+    link.href = canvas.toDataURL("image/png");
+    link.download = filename;
+    link.click();
+  };
+  image.onerror = () => URL.revokeObjectURL(url);
+  image.src = url;
 }
 export function liveAutoEnabled() { return auto; }
 export function setLiveBusy(value) {
@@ -110,6 +184,23 @@ function ownerAvatar(team) {
   return avatar;
 }
 
+function nflLogoUrl(team) {
+  const code = NFL_LOGO_CODES[String(team || "").toUpperCase()];
+  return code ? `${ESPN_NFL_LOGO_BASE}/${code}.png` : null;
+}
+
+function nflLogo(team, extraClass = "") {
+  const imageUrl = nflLogoUrl(team);
+  if (!imageUrl) return null;
+  const image = node("img", `live-nfl-logo${extraClass ? ` ${extraClass}` : ""}`);
+  image.src = imageUrl;
+  image.alt = `${String(team).toUpperCase()} logo`;
+  image.loading = "lazy";
+  image.decoding = "async";
+  image.addEventListener("error", () => image.remove(), { once: true });
+  return image;
+}
+
 function teamSide(team, context, makeAvatar) {
   const side = node("div", "live-team");
   side.append(makeAvatar(team));
@@ -138,30 +229,63 @@ function teamSide(team, context, makeAvatar) {
   return side;
 }
 
+function splitFor(values) {
+  const sanitized = values.map((value) => Number.isFinite(value) ? Math.max(0, value) : 0);
+  const total = sanitized[0] + sanitized[1];
+  if (!total) return { widths: [50, 50], split: 50 };
+  const raw = sanitized.map((value) => value / total * 100);
+  const widths = raw.map((value) => Math.max(6, value));
+  const sum = widths[0] + widths[1];
+  return { widths: widths.map((value) => value / sum * 100), split: widths[0] / sum * 100 };
+}
+
+function leaderFor(matchup, key = "score") {
+  const [a, b] = matchup.teams;
+  const av = Number.isFinite(a?.[key]) ? a[key] : null;
+  const bv = Number.isFinite(b?.[key]) ? b[key] : null;
+  if (av == null || bv == null || av === bv) return null;
+  return av > bv ? a : b;
+}
+
+function barMarker(team, split, kind) {
+  const marker = node("span", `live-score-bar-marker live-score-bar-marker-${kind}`);
+  marker.style.left = `${split}%`;
+  marker.title = `${team.teamName} ${kind === "projected" ? "projected lead" : "leads"}`;
+  marker.setAttribute("aria-hidden", "true");
+  marker.append(ownerAvatar(team));
+  return marker;
+}
+
 function scoreBar(matchup) {
   const bar = node("div", "live-score-bar");
   const [a, b] = matchup.teams;
-  const scores = matchup.teams.map((team) => Number.isFinite(team.score) ? Math.max(0, team.score) : 0);
-  const total = scores[0] + scores[1];
-  const widths = total > 0 ? scores.map((score) => Math.max(6, score / total * 100)) : [50, 50];
-  const sum = widths[0] + widths[1];
-  const labels = [`${a.teamName}: ${points(a.score)}`, `${b.teamName}: ${points(b.score)}`];
+  const current = splitFor(matchup.teams.map((team) => team.score));
+  const projectedScores = matchup.teams.map((team) => Number.isFinite(team.projectedScore) ? team.projectedScore : null);
+  const hasProjected = projectedScores.every(Number.isFinite);
+  const projected = hasProjected ? splitFor(projectedScores) : null;
+  const labels = [`${a.teamName}: ${points(a.score)}${Number.isFinite(a.projectedScore) ? ` projected ${points(a.projectedScore)}` : ""}`, `${b.teamName}: ${points(b.score)}${Number.isFinite(b.projectedScore) ? ` projected ${points(b.projectedScore)}` : ""}`];
+  if (projected) {
+    const projectionTrack = node("div", "live-score-bar-layer live-score-bar-projected");
+    matchup.teams.forEach((team, index) => {
+      const segment = node("span", leaderFor(matchup, "projectedScore")?.rosterId === team.rosterId ? "is-projected-leading" : "");
+      segment.style.flexBasis = `${projected.widths[index]}%`;
+      projectionTrack.append(segment);
+    });
+    bar.append(projectionTrack);
+  }
+  const currentTrack = node("div", "live-score-bar-layer live-score-bar-current");
   matchup.teams.forEach((team, index) => {
     const segment = node("span", team.rosterId === matchup.leaderRosterId ? "is-leading" : "");
-    segment.style.flexBasis = `${widths[index] / sum * 100}%`;
+    segment.style.flexBasis = `${current.widths[index]}%`;
     segment.title = labels[index];
-    bar.append(segment);
+    currentTrack.append(segment);
   });
+  bar.append(currentTrack);
   const leaderIndex = matchup.teams.findIndex((team) => team.rosterId === matchup.leaderRosterId);
-  if (leaderIndex >= 0) {
-    const marker = node("span", "live-score-bar-marker");
-    const leader = matchup.teams[leaderIndex];
-    const split = widths[0] / sum * 100;
-    marker.style.left = `${split}%`;
-    marker.title = `${leader.teamName} leads`;
-    marker.setAttribute("aria-hidden", "true");
-    marker.append(ownerAvatar(leader));
-    bar.append(marker);
+  if (leaderIndex >= 0) bar.append(barMarker(matchup.teams[leaderIndex], current.split, "current"));
+  const projectedLeader = projected ? leaderFor(matchup, "projectedScore") : null;
+  if (projectedLeader && projectedLeader.rosterId !== matchup.leaderRosterId) {
+    bar.append(barMarker(projectedLeader, projected.split, "projected"));
   }
   bar.setAttribute("aria-label", labels.join(" versus "));
   return bar;
@@ -179,17 +303,17 @@ function marginLabel(matchup, status, nfl) {
   return `${ownerDisplayName(leader)} ${status === "final" ? "won" : "leads"} by ${points(matchup.margin)}`;
 }
 
-function statusText(starter, nfl) {
-  if (starter.playerId == null) return "Empty slot";
+function gameStatus(starter, nfl) {
+  if (starter.playerId == null) return { text: "Empty slot" };
   const game = gameFor(starter, nfl);
-  if (!game) return [starter.nflTeam, "Game unavailable"].filter(Boolean).join(" \u00b7 ");
-  const opponent = `${game.home ? "vs" : "@"} ${game.opponent}`;
-  if (!statusFresh(nfl)) return `${opponent} \u00b7 Status unavailable`;
+  if (!game) return { text: "Game unavailable" };
+  const relation = game.home ? "vs" : "@";
+  if (!statusFresh(nfl)) return { relation, opponent: game.opponent, text: "Status unavailable" };
   if (game.state === "scheduled") {
     const date = new Date(game.kickoff);
-    return `${opponent} \u00b7 ${Number.isNaN(date.valueOf()) ? "Scheduled" : date.toLocaleString([], { weekday: "short", hour: "numeric", minute: "2-digit" })}`;
+    return { relation, opponent: game.opponent, text: Number.isNaN(date.valueOf()) ? "Scheduled" : date.toLocaleString([], { weekday: "short", hour: "numeric", minute: "2-digit" }) };
   }
-  return game.state === "final" ? opponent : `${opponent} \u00b7 ${game.detail}`;
+  return { relation, opponent: game.opponent, text: game.state === "final" ? "" : game.detail };
 }
 
 function starterCell(starter, nfl) {
@@ -199,28 +323,58 @@ function starterCell(starter, nfl) {
   const state = starter.playerId != null && statusFresh(nfl) ? gameFor(starter, nfl)?.state : null;
   const score = state === "scheduled" && starter.points === 0 ? "\u2014" : points(starter.points);
   const scoreStack = node("span", "live-player-score-stack");
-  const name = node("strong", "live-player-name", starter.name);
+  const name = node("strong", "live-player-name");
+  name.append(node("span", "live-player-name-text", starter.name));
+  const teamLogo = nflLogo(starter.nflTeam, "live-player-team-logo");
+  if (teamLogo) name.append(" ", teamLogo);
+  if (["live", "final"].includes(state) && starter.statLine) name.append(" ", node("span", "live-player-statline", starter.statLine));
   if (state === "final") name.append(" ", lockIcon("Player score locked"));
   copy.append(name);
   if (["live", "final", "scheduled"].includes(state)) cell.dataset.gameState = state;
-  copy.append(node("span", "live-player-status", statusText(starter, nfl)));
+  const status = node("span", "live-player-status");
+  const game = gameStatus(starter, nfl);
+  if (game.opponent) {
+    status.classList.add("has-matchup");
+    status.append(node("span", "live-game-relation", game.relation));
+    const opponentLogo = nflLogo(game.opponent);
+    if (opponentLogo) status.append(opponentLogo);
+    else status.append(node("span", "live-game-opponent", game.opponent));
+  }
+  if (game.text) status.append(node("span", "live-game-detail", game.text));
+  copy.append(status);
   scoreStack.append(node("strong", "live-player-points", starter.playerId == null ? "\u2014" : score));
   if (state !== "final" && Number.isFinite(starter.projectedPoints)) scoreStack.append(node("span", "live-player-projected", points(starter.projectedPoints)));
   cell.append(copy, scoreStack);
   return cell;
 }
 
+function matchupPicker(matchups, selected, week) {
+  const picker = node("div", "live-matchup-picker");
+  picker.setAttribute("aria-label", "Choose matchup");
+  matchups.forEach((matchup) => {
+    const button = node("button", `live-matchup-picker-button${matchup.matchupId === selected.matchupId ? " is-selected" : ""}`);
+    button.type = "button";
+    button.id = `liveMatchupPick-${matchup.matchupId}`;
+    button.setAttribute("aria-label", matchup.teams.map((team) => team.teamName).join(" versus "));
+    button.setAttribute("aria-current", String(matchup.matchupId === selected.matchupId));
+    button.addEventListener("click", () => navigate(matchup.matchupId, week, true));
+    matchup.teams.forEach((team) => button.append(ownerAvatar(team)));
+    picker.append(button);
+  });
+  return picker;
+}
+
 function renderDetail(root, matchup, current, context, makeAvatar) {
   const navigation = node("div", "live-detail-nav");
   navigation.append(iconButton("ArrowLeft", "Back to Live Scores", () => { navigateBack = true; navigate(null); }, "liveBack"));
   const title = node("h3", "", "Starters"); title.id = "matchupDetailTitle"; title.tabIndex = -1;
-  navigation.append(title);
-  const index = current.matchups.indexOf(matchup);
-  const previous = iconButton("ChevronLeft", "Previous matchup", () => navigate(current.matchups[index - 1].matchupId, current.week, true), "livePrevious");
-  const next = iconButton("ChevronRight", "Next matchup", () => navigate(current.matchups[index + 1].matchupId, current.week, true), "liveNext");
-  previous.disabled = index === 0; next.disabled = index === current.matchups.length - 1;
-  navigation.append(previous, next);
+  navigation.append(title, matchupPicker(current.matchups, matchup, current.week), exportButton("Export matchup", () => {
+    const target = document.getElementById("liveMatchupExport");
+    if (target) void exportElementAsPng(target, `${safeFilename(`matchup-week-${current.week}-${matchup.teams.map((team) => shortOwnerName(ownerName(team))).join("-vs-")}`)}.png`);
+  }));
   root.append(navigation);
+  const exportWrap = node("article", "live-matchup-export");
+  exportWrap.id = "liveMatchupExport";
   const summary = node("div", "live-detail-summary");
   matchup.teams.forEach((team) => {
     const side = teamSide(team, context, makeAvatar);
@@ -229,11 +383,11 @@ function renderDetail(root, matchup, current, context, makeAvatar) {
     summary.append(side);
   });
   summary.append(node("p", "live-detail-margin", marginLabel(matchup, current.status, context.nflStatus)));
-  root.append(summary);
+  exportWrap.append(summary);
   const roster = node("div", "live-roster");
   roster.setAttribute("role", "table"); roster.setAttribute("aria-label", "Starting lineup comparison");
   const [a, b] = matchup.teams.map((team) => team.starters || []);
-  if (!a.length && !b.length) root.append(node("p", "section-note", "Starter details unavailable"));
+  if (!a.length && !b.length) exportWrap.append(node("p", "section-note", "Starter details unavailable"));
   else {
     const labels = node("div", "live-starter-row live-roster-labels"); labels.setAttribute("role", "row");
     for (const text of [matchup.teams[0].teamName, "Slot", matchup.teams[1].teamName]) {
@@ -248,23 +402,9 @@ function renderDetail(root, matchup, current, context, makeAvatar) {
       for (const cell of [left, slot, right]) cell.setAttribute("role", "cell");
       row.append(left, slot, right); roster.append(row);
     }
-    root.append(roster);
+    exportWrap.append(roster);
   }
-  const section = node("section", "live-activity");
-  section.append(node("h3", "", "Scoring activity"));
-  const entries = activity.entries.get(matchup.matchupId) || [];
-  if (!entries.length) section.append(node("p", "section-note", "No score changes observed yet."));
-  const list = node("ol");
-  for (const entry of entries) {
-    const item = node("li");
-    const stamp = node("time", "", `Observed ${time(entry.observedAt)}`); stamp.dateTime = entry.observedAt;
-    item.append(stamp);
-    const changes = node("div");
-    for (const change of entry.changes) changes.append(node("p", "", `${change.team} ${change.delta > 0 ? "+" : ""}${points(change.delta)} \u2192 ${points(change.score)}`));
-    if (entry.leadChanged) changes.append(node("strong", "", entry.leader ? `${entry.leader} takes the lead` : "Matchup tied"));
-    item.append(changes); list.append(item);
-  }
-  section.append(list); root.append(section);
+  root.append(exportWrap);
 }
 
 function draw() {
@@ -276,7 +416,7 @@ function draw() {
   const header = node("header", "live-header");
   const heading = node("div", "live-heading");
   const title = node("h2", "", current?.week ? `Week ${current.week}` : "Live Scores"); title.id = "liveTitle"; title.tabIndex = -1;
-  heading.append(title, node("span", `live-state live-state-${current?.status}`, { provisional: "Live \u00b7 Provisional", awaiting_scoring: "Awaiting scoring", final: "Final", season_complete: "Regular season complete" }[current?.status] || "Unavailable"));
+  heading.append(title, node("span", `live-state live-state-${current?.status}`, { provisional: "Live", awaiting_scoring: "Awaiting scoring", final: "Final", season_complete: "Regular season complete" }[current?.status] || "Unavailable"));
   header.append(heading);
   const actions = node("div", "live-actions");
   const freshness = node("div", "live-freshness");
@@ -304,15 +444,8 @@ function draw() {
   }
   if (selected) renderDetail(root, selected, current, context, makeAvatar);
   else {
-    const toolbar = node("div", "live-toolbar");
-    toolbar.append(node("span", "", `${current.matchups.length} matchups`));
-    const sort = node("select", "live-sort"); sort.id = "liveSort"; sort.setAttribute("aria-label", "Sort matchups");
-    for (const [value, label] of [["order", "Matchup order"], ["closest", "Closest score"]]) { const option = node("option", "", label); option.value = value; sort.append(option); }
-    sort.value = sortMode;
-    sort.addEventListener("change", () => { sortMode = sort.value; order = [...current.matchups].sort((a, b) => sortMode === "closest" ? a.margin - b.margin || a.matchupId - b.matchupId : a.matchupId - b.matchupId).map((m) => m.matchupId); draw(); });
-    toolbar.append(sort); root.append(toolbar);
     const key = `${stats.metadata.season}/${current.week}`;
-    if (orderKey !== key) { orderKey = key; order = []; sortMode = "order"; sort.value = sortMode; }
+    if (orderKey !== key) { orderKey = key; order = []; }
     const ids = current.matchups.map((m) => m.matchupId);
     order = [...order.filter((id) => ids.includes(id)), ...ids.filter((id) => !order.includes(id))];
     const grid = node("div", "live-matchup-grid");
