@@ -454,6 +454,15 @@ h2 { max-width: 640px; font-size: clamp(1.45rem, 3vw, 2.35rem); }
 .data-table thead th { color: var(--muted); font-size: .72rem; font-weight: 850; letter-spacing: .05em; text-transform: uppercase; }
 .data-table tbody tr:last-child td { border-bottom: 0; }
 .data-table tbody tr:hover td { background-color: var(--subtle); }
+.draft-table .draft-rank { display: block; margin-top: 6px; font-size: .74rem; font-weight: 650; }
+.draft-table .draft-grade { display: block; color: var(--muted); font-size: .68rem; }
+.draft-value { --pick-color: var(--score-high); }
+.draft-reach { --pick-color: var(--score-low); }
+.data-table.draft-table tbody tr td:is(.draft-value, .draft-reach) {
+  background-color: color-mix(in srgb, var(--pick-color) 17%, var(--panel));
+  box-shadow: inset 3px 0 var(--pick-color);
+}
+
 .data-table .position { color: var(--muted); font-weight: 850; }
 .data-table .positive { color: var(--positive); font-weight: 800; }
 .data-table .negative { color: var(--negative); font-weight: 800; }

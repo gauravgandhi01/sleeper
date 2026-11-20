@@ -1058,6 +1058,12 @@ function renderDraftBoard(board) {
     root.append(emptyState("Draft unavailable", "Draft picks will appear here when available from Sleeper."));
     return;
   }
+  const note = byId("draftSummary");
+  if (board.rankFormat) {
+    const source = el("a", "", `Sleeper ${board.rankFormat} average draft position`);
+    source.href = `https://api.sleeper.app/v1/projections/nfl/regular/${encodeURIComponent(board.season)}`;
+    note.append(el("br"), "Ranked by ", source, ` (retrieved ${new Date(board.rankedAt).toLocaleDateString("en-US", { timeZone: "America/New_York" })}). Value and reach indicate picks at least one round (${board.columns.length} picks) later or earlier than rank.`);
+  } else note.append(el("br"), "Draft rankings unavailable.");
   const table = el("table", "data-table draft-table");
   const caption = el("caption", "visually-hidden", "Draft recap: rounds down the rows, managers in draft order across the columns.");
   const head = el("thead");
@@ -1081,6 +1087,14 @@ function renderDraftBoard(board) {
       if (pick) {
         cell.title = `Pick ${pick.pickNo}: ${pick.fullName || pick.lastName}`;
         cell.append(el("span", "draft-pick-number", `#${pick.pickNo}`), el("strong", "draft-player", pick.lastName), el("small", "draft-player-meta", [pick.position, pick.nflTeam].filter(Boolean).join(" · ")));
+        if (Number.isInteger(pick.rank)) {
+          const delta = pick.pickNo - pick.rank;
+          const threshold = board.columns.length;
+          const grade = delta >= threshold ? "Value" : delta <= -threshold ? "Reach" : "On target";
+          cell.classList.add(`draft-${grade.toLowerCase().replace(" ", "-")}`);
+          cell.append(el("span", "draft-rank", `Rank #${pick.rank}`), el("small", "draft-grade", grade));
+          cell.title += ` · Rank #${pick.rank} · ${Math.abs(delta)} picks ${delta >= 0 ? "later" : "earlier"} than rank`;
+        } else cell.append(el("span", "draft-rank", "Unranked"));
       } else cell.append(el("span", "", "—"));
       row.append(cell);
     }
@@ -1096,6 +1110,7 @@ export function renderLoading() {
   byId("trendControls").replaceChildren();
   byId("statbookTable").replaceChildren();
   byId("leagueBenchmarks").replaceChildren();
+  byId("draftSummary").replaceChildren();
   byId("draftBoard").replaceChildren(el("p", "section-note", "Loading draft…"));
   byId("liveWeekRegion").replaceChildren(el("p", "section-note", "Loading matchups…"));
   byId("matrixControls").replaceChildren();
